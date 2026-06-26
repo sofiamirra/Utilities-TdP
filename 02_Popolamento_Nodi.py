@@ -121,3 +121,121 @@ class Driver:
         self._view.txt_result.controls.append(ft.Text(f"Numero di nodi: {nNodes}"))
         self._view.txt_result.controls.append(ft.Text(f"Numero di archi: {nEdges}"))
         self._view.update_page()
+
+# ============================================================
+# CASO 2: POPOLAMENTO NODI CON CLASSE CHE HA CAMPI AGGIUNTIVI
+# ============================================================
+# Esempio:
+# La classe Constructor contiene un campo aggiuntivo oldest_driver_dob inizializzato a None.
+# Questo campo non arriva direttamente dalla tabella constructors, ma verrà riempito dopo con una query separata.
+#
+# Logica procedurale:
+# 1. Se la tabella del database contiene più colonne rispetto alla dataclass, NON uso SELECT *.
+# 2. Nella SELECT scrivo manualmente solo i campi presenti nella dataclass e disponibili nel database.
+# 3. Posso comunque usare Constructor(**row), perché Python associa automaticamente le chiavi del dizionario
+#    ai campi della dataclass con lo stesso nome.
+# 4. Il campo aggiuntivo oldest_driver_dob rimane inizialmente None.
+# 5. Dopo aver popolato i nodi, chiamo un secondo metodo del DAO per aggiornare quel campo.
+# 6. Il campo aggiornato sarà poi disponibile nel Model, per esempio nella ricorsione.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# MODEL - DATACLASS: creare oggetto Constructor con campo aggiuntivo
+# ------------------------------------------------------------
+
+from dataclasses import dataclass
+import datetime
+
+@dataclass
+class Constructor:
+    constructorId: int
+    constructorRef: str
+    name: str
+    nationality: str
+    oldest_driver_dob: datetime.date = None
+
+    def __hash__(self):
+        return hash(self.constructorId)
+
+    def __eq__(self, other):
+        return self.constructorId == other.constructorId
+
+    def __str__(self):
+        return self.constructorRef
+
+
+# ------------------------------------------------------------
+# DAO - recuperare i nodi selezionando manualmente i campi compatibili
+# ------------------------------------------------------------
+
+    @staticmethod
+    def getConstructors(y1, y2):
+        conn = DBConnect.get_connection()
+        results = []
+
+        cursor = conn.cursor(dictionary=True)
+        query = """SELECT DISTINCT c.constructorId, c.constructorRef, c.name, c.nationality
+        FROM results r, races ra, constructors c
+        WHERE r.constructorId = c.constructorId AND ra.raceId = r.raceId
+        AND ra.year BETWEEN %s AND %s
+        AND r.position is not null"""
+
+        cursor.execute(query, (y1, y2))
+
+        for row in cursor:
+            results.append(Constructor(**row))
+
+        cursor.close()
+        conn.close()
+        return results
+
+
+# ------------------------------------------------------------
+# DAO - recuperare la data di nascita del pilota più anziano
+# ------------------------------------------------------------
+
+    @staticmethod
+    def getDoB(squadra, year1, year2):
+        conn = DBConnect.get_connection()
+
+        cursor = conn.cursor(dictionary=True)
+        query = """SELECT MIN(d.dob) as oldest_dob
+                    FROM drivers d, results r, races ra
+                    WHERE d.driverId = r.driverId
+                    AND r.raceId = ra.raceId
+                    AND r.constructorId = %s
+                    AND ra.year BETWEEN %s AND %s
+                    AND r.position is not null
+                                    """
+
+        cursor.execute(query, (squadra.constructorId, year1, year2))
+
+        result = None
+        for row in cursor:
+            # prende il valore della colonna e lo salva
+            result = row["oldest_dob"]
+
+        cursor.close()
+        conn.close()
+        return result
+
+
+# ------------------------------------------------------------
+# MODEL - BUILDGRAPH COMPLETO: nodi + campo aggiuntivo aggiornato dal DAO
+# ------------------------------------------------------------
+
+    def buildGraph(self, year1, year2):
+        self._graph.clear()
+        self._idMapConstructors = {}
+
+        nodes = DAO.getConstructors(year1, year2)
+        self._graph.add_nodes_from(nodes)
+
+        for c in nodes:
+            self._idMapConstructors[c.constructorId] = c
+
+        for squadra in self._graph.nodes:
+            # assegna quella data al campo dell'oggetto squadra
+            squadra.oldest_driver_dob = DAO.getDoB(squadra, year1, year2)
+
