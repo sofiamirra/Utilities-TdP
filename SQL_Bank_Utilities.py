@@ -19,6 +19,25 @@
 # Invece 12,50 è una stringa in formato italiano/europeo e va convertita prima di fare SUM, AVG o confronti numerici.
 # ============================================================
 
+# ============================================================
+# SCHEMA STANDARD: TIPO NEL DATABASE --> TIPO IN PYTHON
+# ============================================================
+
+# BIGINT / INT / INTEGER / SMALLINT / TINYINT --> int
+
+# FLOAT / DOUBLE / DECIMAL / NUMERIC --> float
+
+# CHAR / VARCHAR / TEXT / LONGTEXT --> str
+
+# DATE --> datetime.date
+
+# DATETIME / TIMESTAMP --> datetime.datetime
+
+# TIME --> datetime.time
+
+# BOOLEAN / BOOL / TINYINT(1) --> bool oppure int
+
+# NULL --> None
 
 # ============================================================
 # CASO 0: REGOLA BASE SU VIRGOLE E PUNTI NEI NUMERI MYSQL
