@@ -271,3 +271,727 @@
             self._view._txt_result.controls.append(ft.Text(f"{v[0]} - peso {v[1]}"))
         self._view.update_page()
 
+# ============================================================
+# CASO BFS / DFS - VISITE DEL GRAFO E CAMMINO LUNGO DA NODO
+# ============================================================
+# Esempio:
+# La traccia chiede:
+# "Partendo dal nodo selezionato, visualizzare il cammino più lungo
+# scegliendo l'algoritmo di visita più opportuno tra BFS e DFS".
+#
+# Questo NON è il caso della ricorsione/backtracking.
+# Questo è il caso di una VISITA del grafo.
+#
+# ------------------------------------------------------------
+# QUANDO USARE BFS
+# ------------------------------------------------------------
+# BFS = visita in ampiezza.
+# Usa BFS quando:
+# - vuoi visitare il grafo per livelli;
+# - vuoi esplorare prima i nodi più vicini alla sorgente;
+# - vuoi trovare cammini con pochi archi in un grafo non pesato;
+# - la traccia parla di "nodi più vicini", "distanza minima", "livelli".
+#
+# ------------------------------------------------------------
+# QUANDO USARE DFS
+# ------------------------------------------------------------
+# DFS = visita in profondità.
+# Usa DFS quando:
+# - vuoi scendere il più possibile lungo un ramo;
+# - la traccia parla di "cammino lungo" usando una visita;
+# - vuoi costruire un albero di visita profondo;
+# - nella simulazione sugli ordini, per il punto "Cerca Percorso Massimo",
+#   la scelta naturale era DFS FromTree.
+#
+# ------------------------------------------------------------
+# DIFFERENZA TRA NodesFromEdges E NodesFromTree
+# ------------------------------------------------------------
+#
+# 1. NodesFromEdges:
+#    uso:
+#       nx.bfs_edges(self._graph, source)
+#       nx.dfs_edges(self._graph, source)
+#
+#    Ottengo gli archi attraversati dalla visita:
+#       (padre, figlio)
+#
+#    Da questi archi posso ricavare i nodi visitati:
+#       nodes = [source]
+#       nodes.append(edge[1])
+#
+#    Quando usarlo:
+#    - se devo solo stampare gli archi/nodi visitati;
+#    - se la traccia chiede semplicemente l'ordine di visita.
+#
+#
+# 2. NodesFromTree:
+#    uso:
+#       nx.bfs_tree(self._graph, source)
+#       nx.dfs_tree(self._graph, source)
+#
+#    Ottengo un albero di visita.
+#
+#    Da questo posso:
+#    - stampare i nodi visitati;
+#    - stampare gli archi dell'albero;
+#    - ricostruire il cammino source -> nodo;
+#    - cercare il cammino più lungo nell'albero di visita.
+#
+#    Quando usarlo:
+#    - se la traccia chiede un cammino partendo da source;
+#    - se devo ricostruire il percorso;
+#    - se devo fare come nella simulazione sugli ordini.
+#
+# ------------------------------------------------------------
+# NOTA SUL DROPDOWN
+# ------------------------------------------------------------
+# Nelle simulazioni d'esame il Dropdown di solito restituisce l'ID del nodo,
+# non l'oggetto nodo.
+#
+# Controller:
+#       sourceStr = self._view._ddNode.value
+#
+# Model:
+#       source = self._idMap[int(sourceStr)]
+#
+# In questo blocco uso self._idMap come nome generico.
+# Nell'esame puoi sostituirlo con:
+#       self._idMapOrders
+#       self._idMapDrivers
+#       self._idMapArtists
+#       self._idMapProducts
+#       ecc.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# IMPORT DA AVERE NEL MODEL
+# ------------------------------------------------------------
+
+import copy
+import networkx as nx
+
+
+# ============================================================
+# MODEL - FUNZIONE DI SUPPORTO: recuperare nodo da ID Dropdown
+# ============================================================
+# Logica:
+# 1. Il Dropdown restituisce sourceStr.
+# 2. sourceStr di solito è una stringa, anche se rappresenta un intero.
+# 3. Provo a convertirlo in int.
+# 4. Recupero il nodo vero dalla idMap.
+# 5. Il grafo contiene oggetti, quindi BFS/DFS devono partire dall'oggetto.
+#
+# Adattare SOLO questa funzione se la mappa ha un nome diverso.
+# ============================================================
+
+    def _getNodeFromDropdownId(self, sourceStr):
+        if sourceStr is None:
+            return None
+
+        try:
+            sourceId = int(sourceStr)
+        except ValueError:
+            sourceId = sourceStr
+
+        source = self._idMap.get(sourceId)
+
+        return source
+
+
+# ============================================================
+# CASO 1: BFS NodesFromEdges
+# ============================================================
+# Cosa fa:
+# - parte dal nodo source;
+# - esegue una BFS;
+# - prende gli archi di scoperta della BFS;
+# - costruisce la lista dei nodi visitati a partire dagli archi.
+#
+# Restituisce:
+# - nodes = nodi visitati;
+# - edges = archi attraversati dalla visita.
+#
+# Quando usarlo:
+# - quando voglio stampare l'ordine di visita BFS;
+# - quando mi interessano anche gli archi attraversati dalla visita.
+# ============================================================
+
+    def getBFSNodesFromEdgesById(self, sourceStr):
+        source = self._getNodeFromDropdownId(sourceStr)
+
+        if source is None:
+            return [], []
+
+        if source not in self._graph.nodes:
+            return [], []
+
+        nodes = [source]
+        edges = list(nx.bfs_edges(self._graph, source))
+
+        for edge in edges:
+            nodes.append(edge[1])
+
+        return nodes, edges
+
+
+# ============================================================
+# CASO 2: DFS NodesFromEdges
+# ============================================================
+# Cosa fa:
+# - parte dal nodo source;
+# - esegue una DFS;
+# - prende gli archi di scoperta della DFS;
+# - costruisce la lista dei nodi visitati a partire dagli archi.
+#
+# Restituisce:
+# - nodes = nodi visitati;
+# - edges = archi attraversati dalla visita.
+#
+# Quando usarlo:
+# - quando voglio stampare l'ordine di visita DFS;
+# - quando mi interessano anche gli archi attraversati dalla visita.
+# ============================================================
+
+    def getDFSNodesFromEdgesById(self, sourceStr):
+        source = self._getNodeFromDropdownId(sourceStr)
+
+        if source is None:
+            return [], []
+
+        if source not in self._graph.nodes:
+            return [], []
+
+        nodes = [source]
+        edges = list(nx.dfs_edges(self._graph, source))
+
+        for edge in edges:
+            nodes.append(edge[1])
+
+        return nodes, edges
+
+
+# ============================================================
+# CASO 3: BFS NodesFromTree
+# ============================================================
+# Cosa fa:
+# - costruisce l'albero BFS partendo dal nodo source;
+# - prende i nodi dell'albero;
+# - prende gli archi dell'albero.
+#
+# Restituisce:
+# - nodes = nodi dell'albero BFS;
+# - edges = archi dell'albero BFS.
+#
+# Quando usarlo:
+# - quando voglio l'albero di visita BFS;
+# - quando voglio vedere i nodi raggiunti per livelli;
+# - quando eventualmente voglio ricostruire cammini source -> nodo.
+# ============================================================
+
+    def getBFSNodesFromTreeById(self, sourceStr):
+        source = self._getNodeFromDropdownId(sourceStr)
+
+        if source is None:
+            return [], []
+
+        if source not in self._graph.nodes:
+            return [], []
+
+        tree = nx.bfs_tree(self._graph, source)
+
+        nodes = list(tree.nodes())
+        edges = list(tree.edges())
+
+        return nodes, edges
+
+
+# ============================================================
+# CASO 4: DFS NodesFromTree
+# ============================================================
+# Cosa fa:
+# - costruisce l'albero DFS partendo dal nodo source;
+# - prende i nodi dell'albero;
+# - prende gli archi dell'albero.
+#
+# Restituisce:
+# - nodes = nodi dell'albero DFS;
+# - edges = archi dell'albero DFS.
+#
+# Quando usarlo:
+# - quando voglio l'albero di visita DFS;
+# - quando voglio scendere in profondità;
+# - quando la traccia parla genericamente di visita in profondità.
+# ============================================================
+
+    def getDFSNodesFromTreeById(self, sourceStr):
+        source = self._getNodeFromDropdownId(sourceStr)
+
+        if source is None:
+            return [], []
+
+        if source not in self._graph.nodes:
+            return [], []
+
+        tree = nx.dfs_tree(self._graph, source)
+
+        nodes = list(tree.nodes())
+        edges = list(tree.edges())
+
+        return nodes, edges
+
+
+# ============================================================
+# FUNZIONE DI SUPPORTO: cammino più lungo dentro un albero di visita
+# ============================================================
+# Cosa fa:
+# 1. Riceve un albero di visita già costruito.
+# 2. Per ogni nodo raggiunto, ricostruisce il cammino source -> nodo.
+# 3. Tiene il cammino più lungo.
+#
+# Questo è il pezzo fondamentale della simulazione sugli ordini.
+#
+# Esempio:
+# Se il tree contiene:
+# source -> A -> B -> C
+# source -> D
+#
+# allora confronta:
+# [source, A]
+# [source, A, B]
+# [source, A, B, C]
+# [source, D]
+#
+# e tiene il più lungo.
+# ============================================================
+
+    def _getCamminoPiuLungoDaTree(self, tree, source):
+        lp = []
+
+        nodi = list(tree.nodes())
+
+        for node in nodi:
+            tmp = [node]
+
+            while tmp[0] != source:
+                pred = nx.predecessor(tree, source, tmp[0])
+                tmp.insert(0, pred[0])
+
+            if len(tmp) > len(lp):
+                lp = copy.deepcopy(tmp)
+
+        return lp
+
+
+# ============================================================
+# CASO 5: BFS FromTree - cammino più lungo nell'albero BFS
+# ============================================================
+# Cosa fa:
+# - costruisce l'albero BFS;
+# - ricostruisce tutti i cammini source -> nodo;
+# - restituisce il cammino più lungo nell'albero BFS.
+#
+# Quando usarlo:
+# - se la traccia chiede una visita in ampiezza;
+# - se vuoi ragionare per livelli;
+# - se il testo richiama nodi più vicini o distanza minima.
+# ============================================================
+
+    def getCamminoLungoBFSFromTreeById(self, sourceStr):
+        source = self._getNodeFromDropdownId(sourceStr)
+
+        if source is None:
+            return []
+
+        if source not in self._graph.nodes:
+            return []
+
+        tree = nx.bfs_tree(self._graph, source)
+
+        lp = self._getCamminoPiuLungoDaTree(tree, source)
+
+        return lp
+
+
+# ============================================================
+# CASO 6: DFS FromTree - cammino più lungo nell'albero DFS
+# ============================================================
+# Cosa fa:
+# - costruisce l'albero DFS;
+# - ricostruisce tutti i cammini source -> nodo;
+# - restituisce il cammino più lungo nell'albero DFS.
+#
+# Quando usarlo:
+# - se la traccia chiede un cammino lungo usando una visita;
+# - se devi scendere in profondità;
+# - se vuoi replicare la simulazione sugli ordini.
+#
+# QUESTO È IL CASO PIÙ SIMILE ALLA SIMULAZIONE DI OTTOBRE/NOVEMBRE.
+# ============================================================
+
+    def getCamminoLungoDFSFromTreeById(self, sourceStr):
+        source = self._getNodeFromDropdownId(sourceStr)
+
+        if source is None:
+            return []
+
+        if source not in self._graph.nodes:
+            return []
+
+        tree = nx.dfs_tree(self._graph, source)
+
+        lp = self._getCamminoPiuLungoDaTree(tree, source)
+
+        return lp
+
+
+# ============================================================
+# CONTROLLER - BFS NodesFromEdges
+# ============================================================
+# Collegamento:
+# - legge l'id dal Dropdown;
+# - controlla che sia stato selezionato;
+# - chiama il Model;
+# - stampa nodi visitati e archi attraversati.
+# ============================================================
+
+    def handleBFSNodesFromEdges(self, e):
+        sourceStr = self._view._ddNode.value
+
+        if sourceStr is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare un nodo di partenza", color="red")
+            )
+            self._view.update_page()
+            return
+
+        nodes, edges = self._model.getBFSNodesFromEdgesById(sourceStr)
+
+        if nodes is None or len(nodes) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Nessun nodo raggiungibile tramite BFS", color="red")
+            )
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text(f"BFS NodesFromEdges da nodo {sourceStr}: {len(nodes)} nodi raggiunti", color="red")
+        )
+
+        self._view.txt_result.controls.append(ft.Text("Nodi visitati:"))
+        for n in nodes:
+            self._view.txt_result.controls.append(ft.Text(str(n)))
+
+        self._view.txt_result.controls.append(ft.Text("Archi attraversati dalla BFS:"))
+        for edge in edges:
+            self._view.txt_result.controls.append(
+                ft.Text(f"{edge[0]} --> {edge[1]}")
+            )
+
+        self._view.update_page()
+
+
+# ============================================================
+# CONTROLLER - DFS NodesFromEdges
+# ============================================================
+# Collegamento:
+# - legge l'id dal Dropdown;
+# - controlla che sia stato selezionato;
+# - chiama il Model;
+# - stampa nodi visitati e archi attraversati.
+# ============================================================
+
+    def handleDFSNodesFromEdges(self, e):
+        sourceStr = self._view._ddNode.value
+
+        if sourceStr is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare un nodo di partenza", color="red")
+            )
+            self._view.update_page()
+            return
+
+        nodes, edges = self._model.getDFSNodesFromEdgesById(sourceStr)
+
+        if nodes is None or len(nodes) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Nessun nodo raggiungibile tramite DFS", color="red")
+            )
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text(f"DFS NodesFromEdges da nodo {sourceStr}: {len(nodes)} nodi raggiunti", color="red")
+        )
+
+        self._view.txt_result.controls.append(ft.Text("Nodi visitati:"))
+        for n in nodes:
+            self._view.txt_result.controls.append(ft.Text(str(n)))
+
+        self._view.txt_result.controls.append(ft.Text("Archi attraversati dalla DFS:"))
+        for edge in edges:
+            self._view.txt_result.controls.append(
+                ft.Text(f"{edge[0]} --> {edge[1]}")
+            )
+
+        self._view.update_page()
+
+
+# ============================================================
+# CONTROLLER - BFS NodesFromTree
+# ============================================================
+# Collegamento:
+# - legge l'id dal Dropdown;
+# - costruisce l'albero BFS nel Model;
+# - stampa nodi e archi dell'albero BFS.
+# ============================================================
+
+    def handleBFSNodesFromTree(self, e):
+        sourceStr = self._view._ddNode.value
+
+        if sourceStr is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare un nodo di partenza", color="red")
+            )
+            self._view.update_page()
+            return
+
+        nodes, edges = self._model.getBFSNodesFromTreeById(sourceStr)
+
+        if nodes is None or len(nodes) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Nessun nodo raggiungibile tramite albero BFS", color="red")
+            )
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text(f"BFS NodesFromTree da nodo {sourceStr}: {len(nodes)} nodi raggiunti", color="red")
+        )
+
+        self._view.txt_result.controls.append(ft.Text("Nodi dell'albero BFS:"))
+        for n in nodes:
+            self._view.txt_result.controls.append(ft.Text(str(n)))
+
+        self._view.txt_result.controls.append(ft.Text("Archi dell'albero BFS:"))
+        for edge in edges:
+            self._view.txt_result.controls.append(
+                ft.Text(f"{edge[0]} --> {edge[1]}")
+            )
+
+        self._view.update_page()
+
+
+# ============================================================
+# CONTROLLER - DFS NodesFromTree
+# ============================================================
+# Collegamento:
+# - legge l'id dal Dropdown;
+# - costruisce l'albero DFS nel Model;
+# - stampa nodi e archi dell'albero DFS.
+# ============================================================
+
+    def handleDFSNodesFromTree(self, e):
+        sourceStr = self._view._ddNode.value
+
+        if sourceStr is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare un nodo di partenza", color="red")
+            )
+            self._view.update_page()
+            return
+
+        nodes, edges = self._model.getDFSNodesFromTreeById(sourceStr)
+
+        if nodes is None or len(nodes) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Nessun nodo raggiungibile tramite albero DFS", color="red")
+            )
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text(f"DFS NodesFromTree da nodo {sourceStr}: {len(nodes)} nodi raggiunti", color="red")
+        )
+
+        self._view.txt_result.controls.append(ft.Text("Nodi dell'albero DFS:"))
+        for n in nodes:
+            self._view.txt_result.controls.append(ft.Text(str(n)))
+
+        self._view.txt_result.controls.append(ft.Text("Archi dell'albero DFS:"))
+        for edge in edges:
+            self._view.txt_result.controls.append(
+                ft.Text(f"{edge[0]} --> {edge[1]}")
+            )
+
+        self._view.update_page()
+
+
+# ============================================================
+# CONTROLLER - CAMMINO LUNGO BFS FromTree
+# ============================================================
+# Collegamento:
+# - legge l'id dal Dropdown;
+# - chiama il Model;
+# - il Model costruisce bfs_tree;
+# - il Model ricostruisce tutti i cammini source -> nodo;
+# - il Model restituisce il più lungo.
+#
+# Da usare se la traccia richiede esplicitamente BFS oppure visita in ampiezza.
+# ============================================================
+
+    def handleCamminoLungoBFS(self, e):
+        sourceStr = self._view._ddNode.value
+
+        if sourceStr is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare un nodo di partenza", color="red")
+            )
+            self._view.update_page()
+            return
+
+        cammino = self._model.getCamminoLungoBFSFromTreeById(sourceStr)
+
+        if cammino is None or len(cammino) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Nessun cammino trovato tramite BFS", color="red")
+            )
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text(f"Cammino lungo BFS da nodo {sourceStr}: {len(cammino)} nodi", color="red")
+        )
+
+        for nodo in cammino:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+
+        self._view.update_page()
+
+
+# ============================================================
+# CONTROLLER - CAMMINO LUNGO DFS FromTree
+# ============================================================
+# Collegamento:
+# - legge l'id dal Dropdown;
+# - chiama il Model;
+# - il Model costruisce dfs_tree;
+# - il Model ricostruisce tutti i cammini source -> nodo;
+# - il Model restituisce il più lungo.
+#
+# QUESTO È IL CASO DA USARE PER UNA TRACCIA COME:
+# "Cerca Percorso Massimo partendo da un nodo selezionato,
+# scegliendo tra visita in ampiezza e visita in profondità".
+#
+# Nella simulazione sugli ordini:
+# - Dropdown nodo ordine;
+# - sourceStr = id ordine selezionato;
+# - source = self._idMapOrders[int(sourceStr)];
+# - tree = nx.dfs_tree(self._graph, source);
+# - ricostruisco il cammino più lungo nell'albero.
+# ============================================================
+
+    def handleCamminoLungoDFS(self, e):
+        sourceStr = self._view._ddNode.value
+
+        if sourceStr is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare un nodo di partenza", color="red")
+            )
+            self._view.update_page()
+            return
+
+        cammino = self._model.getCamminoLungoDFSFromTreeById(sourceStr)
+
+        if cammino is None or len(cammino) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Nessun cammino trovato tramite DFS", color="red")
+            )
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text(f"Cammino lungo DFS da nodo {sourceStr}: {len(cammino)} nodi", color="red")
+        )
+
+        for nodo in cammino:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+
+        self._view.update_page()
+
+
+# ============================================================
+# SCHEMA RAPIDO DA ESAME
+# ============================================================
+
+# Traccia:
+# "visualizzare i nodi raggiungibili con visita BFS"
+# Uso:
+#       getBFSNodesFromEdgesById
+# oppure:
+#       getBFSNodesFromTreeById
+#
+# Traccia:
+# "visualizzare i nodi raggiungibili con visita DFS"
+# Uso:
+#       getDFSNodesFromEdgesById
+# oppure:
+#       getDFSNodesFromTreeById
+#
+# Traccia:
+# "stampare anche gli archi attraversati dalla visita"
+# Uso:
+#       NodesFromEdges
+#
+# Traccia:
+# "costruire l'albero di visita"
+# Uso:
+#       NodesFromTree
+#
+# Traccia:
+# "trovare un cammino lungo partendo da un nodo usando BFS/DFS"
+# Uso:
+#       getCamminoLungoBFSFromTreeById
+# oppure, più spesso:
+#       getCamminoLungoDFSFromTreeById
+#
+# Traccia come simulazione sugli ordini:
+# "Cerca Percorso Massimo partendo dal nodo selezionato,
+# scegliendo tra BFS e DFS"
+# Uso:
+#       DFS FromTree con ricostruzione del cammino più lungo.
+#
+# Traccia:
+# "percorso ottimo con pesi crescenti/decrescenti, vincoli, massimo score"
+# NON basta BFS/DFS.
+# Uso:
+#       ricorsione / backtracking.
+#
+# Grafo orientato:
+# BFS/DFS seguono il verso degli archi.
+#
+# Grafo non orientato:
+# BFS/DFS esplorano normalmente i vicini.
+#
+# Se voglio ignorare il verso in un grafo orientato:
+# uso:
+#       self._graph.to_undirected()
+# ============================================================
