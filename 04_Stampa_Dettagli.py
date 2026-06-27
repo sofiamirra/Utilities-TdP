@@ -29,13 +29,18 @@
 # ------------------------------------------------------------
 # MODEL - BUILDGRAPH: salvare ogni arco nella lista degli archi
 # ------------------------------------------------------------
+    # Nel buildGraph, subito dopo clear del grafo, pulisco anche la lista degli archi.
+    def buildGraph(self, ...):
+        self._graph.clear()
+        self._lista_archi.clear()
 
+        # Nel buildGraph popolo la lista degli archi.
         for e in allEdges:
             self._graph.add_edge(e.d1, e.d2, weight=e.peso)
             self._lista_archi.append(e)
 
 
-    # ------------------------------------------------------------
+# ------------------------------------------------------------
 # MODEL
 # ------------------------------------------------------------
 
