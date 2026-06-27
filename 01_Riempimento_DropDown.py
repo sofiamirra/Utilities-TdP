@@ -210,6 +210,7 @@ class Category:
 
 # ============================================================
 # CASO 4: RIEMPIMENTO DROPDOWN COLLEGATO A UN TASTO
+# NON SERVE IL METODO ON_CHANGE
 # ============================================================
 # Esempio:
 # L'utente imposta alcuni parametri.
@@ -234,3 +235,38 @@ class Category:
         ...
         self._fillDDProdotti()
 
+# ============================================================
+# APPUNTO: DROPDOWN CON OGGETTO, ID COME CHIAVE E NOME VISIBILE
+# ============================================================
+# Esempio:
+# Devo popolare un Dropdown con oggetti Artist.
+# Ogni Artist ha:
+# - ArtistId = chiave primaria nel database
+# - Name = nome da mostrare all'utente
+#
+# Logica procedurale:
+# 1. Nel Dropdown voglio mostrare il nome, quindi uso text=x.Name.
+# 2. Come chiave interna uso l'ID, quindi key=x.ArtistId.
+# 3. Come data salvo tutto l'oggetto, quindi data=x.
+# 4. Quando l'utente seleziona una voce, recupero l'intero oggetto con e.control.data.
+# 5. In questo modo nel menu vedo solo il nome, ma nel Controller ho accesso a tutti i campi dell'oggetto.
+# ============================================================
+
+# ------------------------------------------------------------
+# CONTROLLER - riempire il Dropdown con oggetti
+# ------------------------------------------------------------
+
+    def _fillDDArtisti(self):
+        artists = self._model.getAllArtists()
+
+        self._view._ddArtisti.options.clear()
+        self._view._ddArtisti.options.extend(
+            list(map(lambda x: ft.dropdown.Option(
+                data=x,
+                key=x.ArtistId,
+                text=x.Name,
+                on_click=self._choiceArtist
+            ), artists))
+        )
+
+        self._view.update_page()
