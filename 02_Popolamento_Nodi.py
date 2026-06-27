@@ -105,21 +105,115 @@ class Driver:
     def getGraphDetails(self):
         return len(self._graph.nodes), len(self._graph.edges)
 
+# ============================================================
+# CONTROLLER - HANDLE CREA GRAFO CON CONTROLLI INPUT
+# ============================================================
+# Esempio:
+# Prima di creare il grafo devo controllare che l'utente abbia inserito/selezionato
+# tutti i valori necessari.
+#
+# Logica procedurale:
+# 1. Leggo i valori dalla View.
+# 2. Se un valore arriva da un Dropdown, controllo che non sia None.
+# 3. Se un valore arriva da una TextField numerica, controllo:
+#    - che non sia None;
+#    - che non sia stringa vuota;
+#    - che sia convertibile a int;
+#    - che rispetti eventuali vincoli, per esempio > 0.
+# 4. Se un controllo fallisce:
+#    - pulisco txt_result;
+#    - stampo un messaggio di errore;
+#    - faccio update_page();
+#    - faccio return per bloccare la creazione del grafo.
+# 5. Solo se tutti i controlli passano, chiamo self._model.buildGraph(...).
+# ============================================================
 
-# ------------------------------------------------------------
-# CONTROLLER
-# ------------------------------------------------------------
+    # ------------------------------------------------------------
+    # CONTROLLER - caso con due Dropdown anno
+    # ------------------------------------------------------------
 
     def handleCreaGrafo(self, e):
         year1 = self._view._ddAnno1.value
         year2 = self._view._ddAnno2.value
+
+        if year1 is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare il primo anno", color="red")
+            )
+            self._view.update_page()
+            return
+
+        if year2 is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare il secondo anno", color="red")
+            )
+            self._view.update_page()
+            return
+
         self._model.buildGraph(year1, year2)
+
         self._view.txt_result.controls.clear()
         self._view.txt_result.controls.append(ft.Text("Grafo correttamente creato!"))
 
         nNodes, nEdges = self._model.getGraphDetails()
         self._view.txt_result.controls.append(ft.Text(f"Numero di nodi: {nNodes}"))
         self._view.txt_result.controls.append(ft.Text(f"Numero di archi: {nEdges}"))
+
+        self._view.update_page()
+
+# ------------------------------------------------------------
+# CONTROLLER - caso con Dropdown + valore numerico K
+# ------------------------------------------------------------
+
+    def handleCreaGrafo(self, e):
+        storeId = self._view._ddStore.value
+        k = self._view._txtIntK.value
+
+        if storeId is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare uno store", color="red")
+            )
+            self._view.update_page()
+            return
+
+        if k is None or k == "":
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: inserire un valore per K", color="red")
+            )
+            self._view.update_page()
+            return
+
+        try:
+            kInt = int(k)
+        except ValueError:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: K deve essere un numero intero", color="red")
+            )
+            self._view.update_page()
+            return
+
+        if kInt <= 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: K deve essere maggiore di zero", color="red")
+            )
+            self._view.update_page()
+            return
+
+        self._model.buildGraph(storeId, kInt)
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text("Grafo correttamente creato!"))
+
+        nNodes, nEdges = self._model.getGraphDetails()
+        self._view.txt_result.controls.append(ft.Text(f"Numero di nodi: {nNodes}"))
+        self._view.txt_result.controls.append(ft.Text(f"Numero di archi: {nEdges}"))
+
         self._view.update_page()
 
 # ============================================================
