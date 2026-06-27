@@ -573,6 +573,8 @@
 
     def handleCercaPercorso(self, e):
         source = self._choiceNode
+        # NON puntare al METODO (l'azione), punta alla VARIABILE (il dato salvato in choice)
+        # Metodo = "Come si fa", Variabile = "Cosa ha scelto l'utente"
 
         if source is None:
             self._view.txt_result.controls.clear()
