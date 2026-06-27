@@ -270,3 +270,24 @@ class Category:
         )
 
         self._view.update_page()
+# ============================================================
+# UTILITY : RIABILITARE ELEMENTI DELLA VIEW DOPO LA CREAZIONE DEL GRAFO
+# ============================================================
+# Esempio:
+# Alcuni controlli sono inizialmente disabilitati (disabled=True) nella View.
+# Dopo aver creato correttamente il grafo, li riabilito.
+#
+# Logica:
+# - disabled = True  --> elemento non utilizzabile
+# - disabled = False --> elemento utilizzabile
+# - dopo aver modificato disabled, devo chiamare update_page()
+# ============================================================
+
+# ============================================================
+# CONTROLLER: Nella funzione _fillDD di riferimento
+# ============================================================
+
+    self._view._ddNode.disabled = False
+    self._view._btnCerca.disabled = False
+    self._view._btnRicorsione.disabled = False
+    self._view.update_page()
