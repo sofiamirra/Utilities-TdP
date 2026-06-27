@@ -1,65 +1,14 @@
 # ============================================================
-# 06_RICORSIONE_v2.py
-# ============================================================
-# Questo file raccoglie le casistiche principali per impostare la ricorsione negli esercizi di TdP.
-# Non è pensato per essere eseguito direttamente.
-# Ogni blocco va copiato nel file corretto del progetto, di solito nel Model e nel Controller.
-#
-# Regola generale:
-# - Il metodo pubblico del Model è il MANAGER: inizializza variabili e fa partire la ricorsione.
-# - Il metodo _ricorsione è l'OPERAIO: espande parziale, controlla vincoli e fa backtracking.
-# - Se serve, creo una funzione _getScore per calcolare il punteggio del parziale.
-# - Il Controller legge gli input dalla View, chiama il metodo pubblico del Model e stampa il risultato.
-#
-# Schema mentale:
-# - Se la traccia dice "partendo dal nodo selezionato", il manager NON fa un ciclo su tutti i nodi.
-# - Se la traccia dice "trova il cammino migliore nel grafo", il manager fa un ciclo su tutti i nodi.
-# - Se la traccia dice "nella componente connessa più grande", il manager fa un ciclo solo sui nodi di quella componente.
-# - Se la traccia dice "arrivare a destinazione", aggiorno l'ottimo solo quando arrivo a destinazione.
-# - Se la traccia dice "lunghezza esatta K", aggiorno l'ottimo solo quando len(parziale) == K.
-# - Se la traccia dice "massimo assoluto" senza traguardo, aggiorno l'ottimo a ogni passo valido.
-# ============================================================
-
-
-# ============================================================
-# CASO 0: IMPORT E VARIABILI STANDARD
-# ============================================================
-# Esempio:
-# Prima di usare ricorsione e backtracking, preparo import e variabili standard.
-#
-# Logica procedurale:
-# 1. Uso copy.deepcopy quando salvo il migliore, perché parziale cambia con append e pop.
-# 2. Uso self._bestPath per il miglior percorso.
-# 3. Uso self._bestScore per il miglior punteggio.
-# 4. Uso parziale per il percorso che sto costruendo.
-# ============================================================
-
-# ------------------------------------------------------------
-# MODEL - INIT: variabili standard
-# ------------------------------------------------------------
-
-    def __init__(self):
-        self._graph = nx.Graph()
-        self._bestPath = []
-        self._bestScore = 0
-
-
-# ============================================================
 # CASO 1: MANAGER CON NODO DI PARTENZA SELEZIONATO
 # ============================================================
-# Esempio:
-# La traccia dice: "partendo dal nodo selezionato dall'utente, trovare il cammino migliore".
+# Quando usarlo:
+# - la traccia dice "partendo dal nodo selezionato".
+# - il source arriva da Dropdown, TextField o scelta salvata nel Controller.
 #
-# Logica procedurale:
-# 1. Il nodo di partenza è già noto.
-# 2. Non devo provare tutti i nodi del grafo.
-# 3. Inizializzo parziale con il solo nodo di partenza.
-# 4. Chiamo la ricorsione una sola volta.
-#
-# Quando usare questo caso:
-# quando la View contiene un Dropdown, una TextField o una selezione da cui ricavo il nodo source.
+# Controlli:
+# - nel Controller controllo che source non sia None.
+# - nel Model controllo che source sia effettivamente nel grafo.
 # ============================================================
-
 
 # ------------------------------------------------------------
 # MODEL
@@ -69,30 +18,56 @@
         self._bestPath = []
         self._bestScore = 0
 
+        if source is None:
+            return [], 0
+        if source not in self._graph.nodes:
+            return [], 0
+
         parziale = [source]
         self._ricorsione(parziale)
 
         return self._bestPath, self._bestScore
 
 
-# ============================================================
-# CASO 2: MANAGER CON CICLO INIZIALE SU TUTTI I NODI
-# ============================================================
-# Esempio:
-# La traccia dice: "trovare il cammino migliore nel grafo" senza indicare un nodo di partenza.
-#
-# Logica procedurale:
-# 1. Non ho un nodo source imposto.
-# 2. Ogni nodo del grafo può essere il punto di partenza del cammino migliore.
-# 3. Faccio un for su tutti i nodi.
-# 4. Per ogni nodo creo un nuovo parziale iniziale.
-# 5. Chiamo la ricorsione partendo da quel nodo.
-# 6. Le variabili bestPath e bestScore non vengono resettate dentro il ciclo, altrimenti perderei il migliore globale.
-#
-# Quando usare questo caso:
-# quando la traccia chiede il migliore assoluto nel grafo.
-# ============================================================
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
 
+    def handleCercaPercorsoDaNodo(self, e):
+        source = self._choiceNode
+
+        if source is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di partenza", color="red"))
+            self._view.update_page()
+            return
+
+        path, score = self._model.getPercorsoDaNodo(source)
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Percorso migliore trovato: score = {score}", color="red"))
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+        self._view.update_page()
+
+
+# ============================================================
+# CASO 2: MANAGER CON CICLO SU TUTTI I NODI
+# ============================================================
+# Quando usarlo:
+# - la traccia dice "trovare il cammino migliore nel grafo" senza dare un nodo di partenza.
+#
+# Logica:
+# - ogni nodo puo' essere la partenza del cammino migliore.
+# - inizializzo bestPath e bestScore una sola volta prima del for.
+# - NON resetto bestPath dentro il ciclo.
+# ============================================================
 
 # ------------------------------------------------------------
 # MODEL
@@ -102,6 +77,9 @@
         self._bestPath = []
         self._bestScore = 0
 
+        if len(self._graph.nodes) == 0:
+            return [], 0
+
         for n in self._graph.nodes:
             parziale = [n]
             self._ricorsione(parziale)
@@ -109,32 +87,48 @@
         return self._bestPath, self._bestScore
 
 
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
+
+    def handleCercaPercorsoMiglioreGrafo(self, e):
+        path, score = self._model.getPercorsoMiglioreGrafo()
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato. Verificare che il grafo sia stato creato.", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Percorso migliore nel grafo: score = {score}", color="red"))
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+        self._view.update_page()
+
+
 # ============================================================
 # CASO 3: MANAGER LIMITATO A UNA COMPONENTE CONNESSA
 # ============================================================
-# Esempio:
-# La traccia chiede prima di trovare la componente connessa più grande e poi di cercare il percorso migliore
-# solo all'interno di quella componente.
+# Quando usarlo:
+# - la traccia dice "nella componente connessa piu' grande".
+# - oppure "nella componente del nodo selezionato".
 #
-# Logica procedurale:
-# 1. Calcolo le componenti connesse del grafo.
-# 2. Seleziono la componente più grande.
-# 3. Faccio partire la ricorsione solo dai nodi che appartengono a quella componente.
-# 4. Nel metodo ricorsivo controllo anche che i vicini appartengano alla componente ammessa.
-# 5. In questo modo non esploro nodi fuori dalla componente richiesta.
-#
-# Quando usare questo caso:
-# quando la traccia dice "all'interno della componente connessa maggiore" oppure "nella componente del nodo selezionato".
+# Nota:
+# - connected_components funziona su grafi non orientati.
+# - se il grafo e' orientato, valutare weakly_connected_components oppure convertire a non orientato.
 # ============================================================
 
-
 # ------------------------------------------------------------
-# MODEL - componente connessa più grande
+# MODEL - componente connessa piu' grande
 # ------------------------------------------------------------
 
     def getPercorsoMiglioreComponenteMaggiore(self):
         self._bestPath = []
         self._bestScore = 0
+
+        if len(self._graph.nodes) == 0:
+            return [], 0
 
         componenti = list(nx.connected_components(self._graph))
         componente = max(componenti, key=len)
@@ -154,6 +148,11 @@
     def getPercorsoMiglioreComponenteDiNodo(self, source):
         self._bestPath = []
         self._bestScore = 0
+
+        if source is None:
+            return [], 0
+        if source not in self._graph.nodes:
+            return [], 0
 
         componente = nx.node_connected_component(self._graph, source)
         self._nodiAmmessi = set(componente)
@@ -180,24 +179,67 @@
                 parziale.pop()
 
 
-# ============================================================
-# CASO 4: CAMMINO SEMPLICE DI LUNGHEZZA MASSIMA CON PESI STRETTAMENTE CRESCENTI
-# ============================================================
-# Esempio:
-# Trovare un cammino semplice di lunghezza massima tale che ogni arco successivo abbia peso strettamente crescente.
-#
-# Logica procedurale:
-# 1. Non esiste una destinazione obbligatoria.
-# 2. Non esiste una lunghezza esatta da raggiungere.
-# 3. Ogni parziale valido può essere il migliore.
-# 4. Aggiorno l'ottimo a ogni chiamata.
-# 5. La terminazione è implicita: se non ci sono vicini validi, il for non entra.
-# 6. Controllo peso_corrente > peso_precedente.
-#
-# Quando usare questo caso:
-# quando la traccia dice "più lungo" e "pesi strettamente crescenti".
-# ============================================================
+# ------------------------------------------------------------
+# CONTROLLER - componente piu' grande
+# ------------------------------------------------------------
 
+    def handleCercaComponenteMaggiore(self, e):
+        path, score = self._model.getPercorsoMiglioreComponenteMaggiore()
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato nella componente maggiore", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Percorso migliore nella componente maggiore: score = {score}", color="red"))
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+        self._view.update_page()
+
+
+# ------------------------------------------------------------
+# CONTROLLER - componente del nodo selezionato
+# ------------------------------------------------------------
+
+    def handleCercaComponenteDiNodo(self, e):
+        source = self._choiceNode
+
+        if source is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di partenza", color="red"))
+            self._view.update_page()
+            return
+
+        path, score = self._model.getPercorsoMiglioreComponenteDiNodo(source)
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato nella componente del nodo selezionato", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Percorso migliore nella componente del nodo: score = {score}", color="red"))
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+        self._view.update_page()
+
+
+# ============================================================
+# CASO 4: CAMMINO LUNGO MASSIMO CON PESI STRETTAMENTE CRESCENTI
+# ============================================================
+# Quando usarlo:
+# - la traccia dice "cammino semplice di lunghezza massima".
+# - ogni arco successivo deve avere peso strettamente crescente.
+#
+# Logica:
+# - non c'e' nodo destinazione.
+# - non c'e' lunghezza fissa.
+# - aggiorno l'ottimo a ogni passo valido.
+# - terminazione implicita: quando non ci sono vicini validi, il for non entra.
+# ============================================================
 
 # ------------------------------------------------------------
 # MODEL
@@ -206,6 +248,11 @@
     def getPercorsoCrescenteDaNodo(self, source):
         self._bestPath = []
         self._bestScore = 0
+
+        if source is None:
+            return [], 0
+        if source not in self._graph.nodes:
+            return [], 0
 
         parziale = [source]
         self._ricorsioneCrescente(parziale)
@@ -232,20 +279,47 @@
                     parziale.pop()
 
 
-# ============================================================
-# CASO 5: CAMMINO SEMPLICE DI PESO MASSIMO CON PESI STRETTAMENTE DECRESCENTI
-# ============================================================
-# Esempio:
-# Trovare il percorso di peso massimo partendo da un nodo, con archi successivi di peso decrescente.
-#
-# Logica procedurale:
-# 1. Il punteggio da massimizzare non è la lunghezza, ma la somma dei pesi.
-# 2. Uso _getScore per calcolare il peso totale del parziale.
-# 3. Aggiorno l'ottimo a ogni passo valido.
-# 4. Controllo peso_precedente > peso_corrente.
-# 5. Non metto return dentro il for, altrimenti diventa greedy.
-# ============================================================
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
 
+    def handleCercaPercorsoCrescente(self, e):
+        source = self._choiceNode
+
+        if source is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di partenza", color="red"))
+            self._view.update_page()
+            return
+
+        path, score = self._model.getPercorsoCrescenteDaNodo(source)
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino crescente trovato", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Percorso crescente migliore: lunghezza = {score}", color="red"))
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+        self._view.update_page()
+
+
+# ============================================================
+# CASO 5: CAMMINO DI PESO MASSIMO CON PESI STRETTAMENTE DECRESCENTI
+# ============================================================
+# Quando usarlo:
+# - la traccia dice "percorso di peso massimo".
+# - ogni arco successivo deve avere peso strettamente decrescente.
+# - un nodo puo' comparire una volta sola nel percorso.
+#
+# Logica:
+# - score = somma dei pesi degli archi.
+# - aggiorno l'ottimo a ogni passo valido.
+# - controllo peso_corrente < peso_precedente.
+# ============================================================
 
 # ------------------------------------------------------------
 # MODEL
@@ -254,6 +328,11 @@
     def getPercorsoDecrescentePesoMassimo(self, source):
         self._bestPath = []
         self._bestScore = 0
+
+        if source is None:
+            return [], 0
+        if source not in self._graph.nodes:
+            return [], 0
 
         parziale = [source]
         self._ricorsioneDecrescente(parziale)
@@ -267,7 +346,7 @@
             self._bestPath = copy.deepcopy(parziale)
             self._bestScore = score
 
-        for n in self._graph.neighbors(parziale[-1]):
+        for n in self._graph.successors(parziale[-1]):
             if n not in parziale:
                 peso_corrente = self._graph[parziale[-1]][n]['weight']
 
@@ -282,19 +361,56 @@
                     parziale.pop()
 
 
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
+
+    def handleRicorsioneDecrescente(self, e):
+        source = self._choiceNode
+
+        if source is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di partenza", color="red"))
+            self._view.update_page()
+            return
+
+        path, score = self._model.getPercorsoDecrescentePesoMassimo(source)
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun percorso trovato", color="red"))
+            self._view.update_page()
+            return
+
+        # Usare questo controllo solo se la traccia pretende un percorso con almeno un arco.
+        # Se anche il singolo nodo e' considerato soluzione valida, eliminare questo blocco.
+        if len(path) == 1:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun arco valido trovato a partire dal nodo selezionato", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Percorso di peso massimo trovato: score = {score}", color="red"))
+
+        dettagli = self._model.getPathDetails(path)
+        for d in dettagli:
+            self._view.txt_result.controls.append(ft.Text(f"{d[0]} --> {d[1]} peso={d[2]}"))
+
+        self._view.update_page()
+
+
 # ============================================================
 # CASO 6: CAMMINO CON DESTINAZIONE FISSA
 # ============================================================
-# Esempio:
-# Trovare il miglior cammino da source a target.
+# Quando usarlo:
+# - la traccia dice "da source a target".
+# - la soluzione e' valida solo se termina nel nodo destinazione.
 #
-# Logica procedurale:
-# 1. La soluzione è valida solo se termina in target.
-# 2. Aggiorno l'ottimo solo quando parziale[-1] == target.
-# 3. Quando raggiungo target faccio return.
-# 4. Prima di target non salvo la soluzione, perché non è ancora completa.
+# Logica:
+# - aggiorno bestPath solo quando parziale[-1] == target.
+# - quando arrivo a target, faccio return.
 # ============================================================
-
 
 # ------------------------------------------------------------
 # MODEL
@@ -304,6 +420,11 @@
         self._bestPath = []
         self._bestScore = 0
         self._target = target
+
+        if source is None or target is None:
+            return [], 0
+        if source not in self._graph.nodes or target not in self._graph.nodes:
+            return [], 0
 
         parziale = [source]
         self._ricorsioneDestinazione(parziale)
@@ -327,19 +448,51 @@
                 parziale.pop()
 
 
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
+
+    def handleCercaDestinazione(self, e):
+        source = self._sourceValue
+        target = self._targetValue
+
+        if source is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di partenza", color="red"))
+            self._view.update_page()
+            return
+
+        if target is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di destinazione", color="red"))
+            self._view.update_page()
+            return
+
+        path, score = self._model.getPercorsoConDestinazione(source, target)
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato tra i due nodi selezionati", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Percorso migliore da {source} a {target}: score = {score}", color="red"))
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+        self._view.update_page()
+
+
 # ============================================================
 # CASO 7: CAMMINO CON LUNGHEZZA ESATTA K
 # ============================================================
-# Esempio:
-# Trovare il cammino migliore lungo esattamente K nodi.
+# Quando usarlo:
+# - la traccia dice "cammino lungo esattamente K nodi".
+# - se parla di K archi, controllare len(parziale)-1 == K.
 #
-# Logica procedurale:
-# 1. La soluzione è valida solo se len(parziale) == K.
-# 2. Aggiorno l'ottimo solo a lunghezza esatta.
-# 3. Quando raggiungo K nodi faccio return.
-# 4. Se la traccia parla di K archi, controllo len(parziale)-1 == K.
+# Controlli:
+# - K arriva spesso da TextField, quindi serve try/except nel Controller.
 # ============================================================
-
 
 # ------------------------------------------------------------
 # MODEL
@@ -349,6 +502,13 @@
         self._bestPath = []
         self._bestScore = 0
         self._k = k
+
+        if source is None:
+            return [], 0
+        if source not in self._graph.nodes:
+            return [], 0
+        if k <= 0:
+            return [], 0
 
         parziale = [source]
         self._ricorsioneLunghezzaK(parziale)
@@ -372,19 +532,62 @@
                 parziale.pop()
 
 
-# ============================================================
-# CASO 8: CAMMINO CON SERBATOIO LIMITATO
-# ============================================================
-# Esempio:
-# Trovare il cammino con maggior numero di nodi, ma con peso totale non superiore a una soglia.
-#
-# Logica procedurale:
-# 1. Calcolo il peso del parziale.
-# 2. Se supera la soglia, faccio return.
-# 3. Se è valido, posso aggiornare l'ottimo.
-# 4. Continuo a esplorare perché potrei aggiungere nodi senza superare la soglia.
-# ============================================================
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
 
+    def handleCercaLunghezzaK(self, e):
+        source = self._choiceNode
+        k = self._view._txtK.value
+
+        if source is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di partenza", color="red"))
+            self._view.update_page()
+            return
+
+        if k is None or k == "":
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: inserire un valore K", color="red"))
+            self._view.update_page()
+            return
+
+        try:
+            k = int(k)
+        except ValueError:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: K deve essere un numero intero", color="red"))
+            self._view.update_page()
+            return
+
+        if k <= 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: K deve essere maggiore di zero", color="red"))
+            self._view.update_page()
+            return
+
+        path, score = self._model.getPercorsoLunghezzaK(source, k)
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato con la lunghezza richiesta", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Cammino migliore di lunghezza {k}: score = {score}", color="red"))
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+        self._view.update_page()
+
+
+# ============================================================
+# CASO 8: CAMMINO CON SERBATOIO / BUDGET LIMITATO
+# ============================================================
+# Quando usarlo:
+# - la traccia dice "peso totale non superiore a X".
+# - massimizzare lunghezza o altro punteggio rispettando una soglia.
+# ============================================================
 
 # ------------------------------------------------------------
 # MODEL
@@ -394,6 +597,13 @@
         self._bestPath = []
         self._bestScore = 0
         self._maxPeso = maxPeso
+
+        if source is None:
+            return [], 0
+        if source not in self._graph.nodes:
+            return [], 0
+        if maxPeso <= 0:
+            return [], 0
 
         parziale = [source]
         self._ricorsioneBudget(parziale)
@@ -417,21 +627,67 @@
                 parziale.pop()
 
 
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
+
+    def handleCercaBudget(self, e):
+        source = self._choiceNode
+        maxPeso = self._view._txtMaxPeso.value
+
+        if source is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di partenza", color="red"))
+            self._view.update_page()
+            return
+
+        if maxPeso is None or maxPeso == "":
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: inserire il valore massimo consentito", color="red"))
+            self._view.update_page()
+            return
+
+        try:
+            maxPeso = float(maxPeso)
+        except ValueError:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: il valore massimo deve essere numerico", color="red"))
+            self._view.update_page()
+            return
+
+        if maxPeso <= 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: il valore massimo deve essere maggiore di zero", color="red"))
+            self._view.update_page()
+            return
+
+        path, score = self._model.getPercorsoConBudget(source, maxPeso)
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato con il budget inserito", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Cammino migliore con budget {maxPeso}: lunghezza = {score}", color="red"))
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+        self._view.update_page()
+
+
 # ============================================================
 # CASO 9: SELEZIONARE K NODI CON VINCOLO DI COMPONENTI DIVERSE
 # ============================================================
-# Esempio:
-# Trovare un set di K nodi tale che ogni nodo appartenga a una componente connessa diversa.
+# Quando usarlo:
+# - non sto costruendo un cammino, ma una combinazione di K nodi.
+# - esempio: scegliere K costruttori appartenenti a componenti diverse.
 #
-# Logica procedurale:
-# 1. Non sto costruendo un percorso, ma una combinazione di K nodi.
-# 2. Uso una ricorsione con indice pos.
-# 3. A ogni passo decido se prendere o non prendere il candidato.
-# 4. Quando len(parziale) == K, valuto la soluzione.
-# 5. Uso nx.has_path per controllare se due nodi appartengono alla stessa componente.
-# 6. Se esiste un path tra due nodi, sono nella stessa componente e non posso inserirli insieme.
+# Logica:
+# - uso indice pos.
+# - a ogni passo scelgo se prendere o saltare il candidato.
+# - quando len(parziale) == K valuto la soluzione.
 # ============================================================
-
 
 # ------------------------------------------------------------
 # MODEL
@@ -440,6 +696,11 @@
     def getBestSetKComponentiDiverse(self, k):
         self._bestSet = []
         self._bestScore = float('inf')
+
+        if len(self._graph.nodes) == 0:
+            return [], float('inf')
+        if k <= 0:
+            return [], float('inf')
 
         parziale = []
         candidati = list(self._graph.nodes)
@@ -490,19 +751,54 @@
         return (valore_max - valore_min).days
 
 
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
+
+    def handleCercaKComponentiDiverse(self, e):
+        k = self._view._txtK.value
+
+        if k is None or k == "":
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: inserire un valore K", color="red"))
+            self._view.update_page()
+            return
+
+        try:
+            k = int(k)
+        except ValueError:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: K deve essere un numero intero", color="red"))
+            self._view.update_page()
+            return
+
+        if k <= 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Errore: K deve essere maggiore di zero", color="red"))
+            self._view.update_page()
+            return
+
+        bestSet, score = self._model.getBestSetKComponentiDiverse(k)
+
+        if bestSet is None or len(bestSet) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(ft.Text("Nessuna soluzione trovata con i vincoli inseriti", color="red"))
+            self._view.update_page()
+            return
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(ft.Text(f"Migliore soluzione trovata: score = {score}", color="red"))
+        for n in bestSet:
+            self._view.txt_result.controls.append(ft.Text(str(n)))
+        self._view.update_page()
+
+
 # ============================================================
 # CASO 10: FUNZIONE STANDARD PER CALCOLARE LO SCORE DI UN CAMMINO
 # ============================================================
-# Esempio:
-# La traccia chiede di massimizzare il peso totale del percorso.
-#
-# Logica procedurale:
-# 1. Il parziale è una lista di nodi.
-# 2. Ogni arco attraversato è parziale[i] -> parziale[i+1].
-# 3. Sommo i pesi degli archi.
-# 4. Uso questa funzione dentro la ricorsione ogni volta che devo valutare il parziale.
+# Quando usarla:
+# - la traccia chiede di massimizzare il peso totale del percorso.
 # ============================================================
-
 
 # ------------------------------------------------------------
 # MODEL
@@ -516,17 +812,42 @@
 
 
 # ============================================================
-# CASO 11: VICINI PER GRAFO NON ORIENTATO E GRAFO ORIENTATO
+# CASO 11: STAMPARE UN PERCORSO CON ARCHI E PESI
 # ============================================================
-# Esempio:
-# Devo sapere quale metodo usare per espandere il percorso.
-#
-# Logica procedurale:
-# 1. Se il grafo è non orientato, uso neighbors.
-# 2. Se il grafo è orientato e devo seguire il verso degli archi, uso successors.
-# 3. Se il grafo è orientato e devo andare contro verso, uso predecessors.
+# Per evitare di accedere direttamente a self._graph dal Controller.
 # ============================================================
 
+# ------------------------------------------------------------
+# MODEL
+# ------------------------------------------------------------
+
+    def getPathDetails(self, path):
+        dettagli = []
+
+        if path is None or len(path) < 2:
+            return dettagli
+
+        for i in range(0, len(path)-1):
+            n1 = path[i]
+            n2 = path[i+1]
+            peso = self._graph[n1][n2]['weight']
+            dettagli.append((n1, n2, peso))
+
+        return dettagli
+
+
+# ============================================================
+# CASO 12: VICINI PER GRAFO NON ORIENTATO E GRAFO ORIENTATO
+# ============================================================
+# Se grafo non orientato:
+#     self._graph.neighbors(nodo)
+#
+# Se grafo orientato e devo seguire il verso degli archi:
+#     self._graph.successors(nodo)
+#
+# Se grafo orientato e devo andare contro verso:
+#     self._graph.predecessors(nodo)
+# ============================================================
 
 # ------------------------------------------------------------
 # MODEL - grafo non orientato
@@ -553,28 +874,46 @@
 
 
 # ============================================================
-# CASO 12: CONTROLLER STANDARD PER CHIAMARE LA RICORSIONE
+# CASO 13: DFS TREE PER CAMMINO LUNGO DA UN NODO
 # ============================================================
-# Esempio:
-# L'utente seleziona un nodo o inserisce un id e poi preme "Cerca percorso".
-#
-# Logica procedurale:
-# 1. Leggo il nodo sorgente o l'id dalla View.
-# 2. Controllo che il valore esista.
-# 3. Chiamo il metodo pubblico del Model.
-# 4. Pulisco l'area di output.
-# 5. Stampo score e percorso.
+# Quando usarlo:
+# - la traccia dice di scegliere un algoritmo di visita tra BFS e DFS.
+# - questo NON sostituisce la ricorsione/backtracking ottimizzante.
 # ============================================================
+
+# ------------------------------------------------------------
+# MODEL
+# ------------------------------------------------------------
+
+    def getCamminoDFS(self, source):
+        if source is None:
+            return []
+        if source not in self._graph.nodes:
+            return []
+
+        lp = []
+        tree = nx.dfs_tree(self._graph, source)
+        nodi = list(tree.nodes())
+
+        for node in nodi:
+            tmp = [node]
+
+            while tmp[0] != source:
+                pred = nx.predecessor(tree, source, tmp[0])
+                tmp.insert(0, pred[0])
+
+            if len(tmp) > len(lp):
+                lp = copy.deepcopy(tmp)
+
+        return lp
 
 
 # ------------------------------------------------------------
 # CONTROLLER
 # ------------------------------------------------------------
 
-    def handleCercaPercorso(self, e):
+    def handleCercaCamminoDFS(self, e):
         source = self._choiceNode
-        # NON puntare al METODO (l'azione), punta alla VARIABILE (il dato salvato in choice)
-        # Metodo = "Come si fa", Variabile = "Cosa ha scelto l'utente"
 
         if source is None:
             self._view.txt_result.controls.clear()
@@ -582,115 +921,73 @@
             self._view.update_page()
             return
 
-        path, score = self._model.getPercorsoDaNodo(source)
+        cammino = self._model.getCamminoDFS(source)
 
-        self._view.txt_result.controls.clear()
-        self._view.txt_result.controls.append(ft.Text(f"Percorso migliore trovato: score = {score}", color="red"))
-
-        for nodo in path:
-            self._view.txt_result.controls.append(ft.Text(str(nodo)))
-
-        self._view.update_page()
-
-
-# ============================================================
-# CASO 13: CONTROLLER CON INPUT NUMERICO K
-# ============================================================
-# Esempio:
-# L'utente inserisce K e il programma deve cercare una soluzione di lunghezza K o un set di K nodi.
-#
-# Logica procedurale:
-# 1. Leggo K dalla View.
-# 2. Controllo che non sia vuoto.
-# 3. Converto K in int.
-# 4. Chiamo il metodo pubblico del Model.
-# 5. Stampo risultato e score.
-# ============================================================
-
-
-# ------------------------------------------------------------
-# CONTROLLER
-# ------------------------------------------------------------
-
-    def handleCercaK(self, e):
-        k = self._view._txtK.value
-
-        if k is None or k == "":
+        if cammino is None or len(cammino) == 0:
             self._view.txt_result.controls.clear()
-            self._view.txt_result.controls.append(ft.Text("Errore: inserire un valore K", color="red"))
+            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato tramite DFS", color="red"))
             self._view.update_page()
             return
 
-        k = int(k)
-
-        bestSet, score = self._model.getBestSetKComponentiDiverse(k)
-
         self._view.txt_result.controls.clear()
-        self._view.txt_result.controls.append(ft.Text(f"Migliore soluzione trovata: score = {score}", color="red"))
-
-        for n in bestSet:
-            self._view.txt_result.controls.append(ft.Text(str(n)))
-
+        self._view.txt_result.controls.append(ft.Text(f"Cammino DFS trovato con {len(cammino)} nodi", color="red"))
+        for nodo in cammino:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
         self._view.update_page()
 
 
 # ============================================================
 # SCHEMA DECISIONALE RAPIDO
 # ============================================================
-
-# Traccia:
 # "partendo dal nodo selezionato"
-# Uso manager con parziale = [source] e una sola chiamata ricorsiva.
-
-# Traccia:
-# "trovare il cammino migliore nel grafo"
-# Uso manager con for n in self._graph.nodes.
-
-# Traccia:
-# "nella componente connessa più grande"
-# Calcolo max(nx.connected_components(...), key=len) e parto solo da quei nodi.
-
-# Traccia:
-# "nella componente del nodo selezionato"
-# Uso nx.node_connected_component(self._graph, source).
-
-# Traccia:
-# "cammino più lungo" senza traguardo
-# Aggiorno l'ottimo a ogni passo valido.
-
-# Traccia:
+#     -> manager con parziale = [source]
+#     -> Controller controlla source is None.
+#
+# "migliore nel grafo"
+#     -> manager con for n in self._graph.nodes.
+#     -> Controller controlla path vuoto.
+#
+# "componente connessa piu' grande"
+#     -> max(nx.connected_components(...), key=len).
+#     -> Model controlla grafo vuoto.
+#
+# "componente del nodo selezionato"
+#     -> nx.node_connected_component(self._graph, source).
+#     -> Controller controlla source.
+#
+# "cammino piu' lungo" senza traguardo
+#     -> aggiorno ottimo a ogni passo valido.
+#
 # "peso massimo"
-# Uso _getScore(parziale) e aggiorno se score > bestScore.
-
-# Traccia:
-# "pesi strettamente crescenti"
-# Uso peso_corrente > peso_precedente.
-
-# Traccia:
-# "pesi strettamente decrescenti"
-# Uso peso_corrente < peso_precedente.
-
-# Traccia:
-# "arrivare esattamente a destinazione"
-# Aggiorno solo quando parziale[-1] == target e poi faccio return.
-
-# Traccia:
+#     -> uso _getScore(parziale).
+#
+# "pesi crescenti"
+#     -> peso_corrente > peso_precedente.
+#
+# "pesi decrescenti"
+#     -> peso_corrente < peso_precedente.
+#
+# "destinazione fissa"
+#     -> aggiorno solo quando parziale[-1] == target.
+#     -> Controller controlla source e target.
+#
 # "lunghezza esatta K"
-# Aggiorno solo quando len(parziale) == K e poi faccio return.
-
-# Traccia:
-# "peso massimo non superiore a una soglia"
-# Se _getScore(parziale) > soglia, faccio return.
-
-# Traccia:
+#     -> aggiorno solo quando len(parziale) == K.
+#     -> Controller controlla K.
+#
+# "budget/soglia"
+#     -> se _getScore(parziale) > soglia, faccio return.
+#     -> Controller controlla valore numerico.
+#
 # "scegliere K elementi"
-# Uso ricorsione combinatoria con indice pos.
-
-# Traccia:
-# "componenti connesse diverse"
-# Uso nx.has_path per verificare che i nodi non siano nella stessa componente.
-
+#     -> ricorsione combinatoria con indice pos.
+#     -> Controller controlla K e bestSet vuoto.
+#
 # Attenzione:
-# Se metto return dentro il for dopo il primo vicino valido, sto facendo greedy.
-# Se voglio l'ottimo globale, normalmente non metto return dentro il for.
+# - return dentro il for dopo il primo vicino valido = GREEDY.
+# - se voglio l'ottimo globale, normalmente NON metto return dentro il for.
+#
+# Regola controlli:
+# Ogni volta che il Controller chiama il Model usando input utente,
+# controllo prima gli input e poi controllo se la soluzione restituita e' vuota.
 # ============================================================
