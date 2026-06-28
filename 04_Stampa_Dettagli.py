@@ -271,6 +271,14 @@
 # Se voglio distinguere entranti/uscenti:
 #     self._graph.in_degree(n)
 #     self._graph.out_degree(n)
+
+# Se il grafo è orientato (DiGraph):
+# 1. self._graph.degree(n) -> Restituisce in_degree(n) + out_degree(n)
+# 2. self._graph.in_degree(n) -> Restituisce solo archi entranti
+# 3. self._graph.out_degree(n) -> Restituisce solo archi uscenti
+#
+# Se devi stampare il grado (es. per top 5), usa semplicemente .degree(n)
+# a meno che la traccia non chieda esplicitamente solo uno dei due.
 # ============================================================
 
 # ------------------------------------------------------------
