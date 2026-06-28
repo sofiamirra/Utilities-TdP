@@ -1,6 +1,4 @@
 # ============================================================
-# 03_POPOLAMENTO_ARCHI.py
-# ============================================================
 # CASO 1: ARCHI E PESO CALCOLATI DIRETTAMENTE DALLA QUERY
 # ============================================================
 # Esempio:
@@ -373,8 +371,143 @@ class Arco:
 # MODEL - BUILDGRAPH: inserire gli archi restituiti dal DAO
 # ------------------------------------------------------------
 
-        allEdges = DAO.getAllEdges(category, d1, d2, self._idMapProducts)
-        for e in allEdges:
-            self._graph.add_edge(e.p1, e.p2, weight=e.peso)
-            self._lista_archi.append(e)
+    allEdges = DAO.getAllEdges(category, d1, d2, self._idMapProducts)
+    for e in allEdges:
+        self._graph.add_edge(e.p1, e.p2, weight=e.peso)
+        self._lista_archi.append(e)
+
+# ============================================================
+# DIREZIONE ARCO IN BASE AL NUMERO DI VENDITE
+# ============================================================
+# Caso traccia:
+# Due prodotti sono connessi se entrambi sono stati venduti almeno una volta
+# nel range selezionato.
+#
+# L'arco è:
+# - uscente dal nodo con numero di vendite minore;
+# - entrante nel nodo con numero di vendite maggiore.
+#
+# Quindi:
+# prodotto meno venduto  --->  prodotto più venduto
+#
+# In caso di parità:
+# si inseriscono entrambi gli archi.
+#
+# ------------------------------------------------------------
+# LOGICA SQL
+# ------------------------------------------------------------
+# Supponiamo di avere due sottoquery:
+#
+# t1 = prodotto 1 con numero vendite t1.n
+# t2 = prodotto 2 con numero vendite t2.n
+#
+# Se scrivo:
+#
+#     AND t1.n >= t2.n
+#
+# allora t1 è il prodotto più venduto o a pari vendite.
+# t2 è il prodotto meno venduto o a pari vendite.
+#
+# Quindi:
+# - id1 = prodotto più venduto
+# - id2 = prodotto meno venduto
+#
+# Peso:
+#
+#     t1.n + t2.n AS peso
+#
+# ------------------------------------------------------------
+# LOGICA MODEL
+# ------------------------------------------------------------
+# Se nel DAO creo:
+#
+#     Arco(idMapP[row["id1"]], idMapP[row["id2"]], row["peso"])
+#
+# allora:
+#
+#     e.p1 = prodotto più venduto
+#     e.p2 = prodotto meno venduto
+#
+# Ma la traccia vuole:
+#
+#     meno venduto ---> più venduto
+#
+# Quindi nel Model devo aggiungere:
+#
+#     self._graph.add_edge(e.p2, e.p1, weight=e.peso)
+#
+# ------------------------------------------------------------
+# CASO PARITÀ
+# ------------------------------------------------------------
+# Se t1.n == t2.n, la condizione:
+#
+#     t1.n >= t2.n
+#
+# è vera sia per la coppia A/B sia per la coppia B/A.
+# Quindi SQL produce entrambi gli archi.
+#
+# ------------------------------------------------------------
+# NOTA IMPORTANTE: ORDINE NODI IN add_edge
+# ------------------------------------------------------------
+# Non è una questione di grafo pesato/non pesato.
+# È una questione di grafo orientato/non orientato.
+#
+# Se il grafo è NON orientato:
+#
+#     nx.Graph()
+#     add_edge(a, b) è equivalente ad add_edge(b, a)
+#
+# Se il grafo è orientato:
+#
+#     nx.DiGraph()
+#     add_edge(a, b) significa a ---> b
+#     quindi l'ordine è fondamentale.
+#
+# Il peso non decide la direzione.
+# La direzione la decide l'ordine in add_edge.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# DAO - esempio coerente con la traccia
+# ------------------------------------------------------------
+
+query = """SELECT t1.product_id AS id1,
+                  t2.product_id AS id2,
+                  t1.n AS n1,
+                  t2.n AS n2,
+                  t1.n + t2.n AS peso
+           FROM (...) t1,
+                (...) t2
+           WHERE t1.product_id <> t2.product_id
+           AND t1.n >= t2.n""" # CONDIZIONE SULLA DIREZIONE (E PESO)
+
+
+# ------------------------------------------------------------
+# MODEL - aggiunta arco coerente con la traccia
+# ------------------------------------------------------------
+
+for e in allEdges:
+    # e.p1 = prodotto più venduto
+    # e.p2 = prodotto meno venduto
+    # arco richiesto: meno venduto ---> più venduto
+    self._graph.add_edge(e.p2, e.p1, weight=e.peso)
+    self._lista_archi.append(e)
+
+# ============================================================
+# RECALL: ID DEI NODI E ID DEGLI ARCHI DEVONO COINCIDERE
+# ============================================================
+# Problema tipico:
+# Creo i nodi usando un certo ID, ma poi la query degli archi restituisce
+# un ID con nome diverso, tipo diverso o maiuscole/minuscole diverse.
+#
+# Gli ID usati per costruire la idMap devono essere gli stessi ID
+# restituiti dalla query degli archi.
+#
+# Devono coincidere:
+# - stesso significato;
+# - stesso tipo, per esempio int;
+# - stesso nome/alias SQL;
+# - attenzione a maiuscole e minuscole.
+#
 

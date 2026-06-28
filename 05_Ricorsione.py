@@ -1,4 +1,48 @@
 # ============================================================
+# REGOLA GENERALE: VICINI NELLA RICORSIONE
+# ============================================================
+# Se il grafo è NON orientato:
+#     uso self._graph.neighbors(nodo)
+#
+# Se il grafo è ORIENTATO e devo rispettare il verso degli archi:
+#     uso self._graph.successors(nodo)
+#
+# Se il grafo è ORIENTATO ma devo andare contro il verso degli archi:
+#     uso self._graph.predecessors(nodo)
+#
+# Attenzione:
+# In un nx.DiGraph, usare neighbors(nodo) di solito equivale ai successori,
+# ma all'esame è più chiaro e sicuro scrivere successors()
+# quando la traccia dice che bisogna rispettare il verso degli archi.
+#
+# Regola pratica da esame:
+# - nx.Graph()   --> neighbors()
+# - nx.DiGraph() --> successors() se seguo gli archi
+# - nx.DiGraph() --> predecessors() se risalgo gli archi al contrario
+# ============================================================
+
+# ------------------------------------------------------------
+# MODEL - grafo non orientato
+# ------------------------------------------------------------
+
+for n in self._graph.neighbors(parziale[-1]):
+    ...
+
+# ------------------------------------------------------------
+# MODEL - grafo orientato seguendo il verso
+# ------------------------------------------------------------
+
+for n in self._graph.successors(parziale[-1]):
+    ...
+
+# ------------------------------------------------------------
+# MODEL - grafo orientato contro verso
+# ------------------------------------------------------------
+
+for n in self._graph.predecessors(parziale[-1]):
+    ...
+
+# ============================================================
 # CASO 1: MANAGER CON NODO DI PARTENZA SELEZIONATO
 # ============================================================
 # Quando usarlo:
@@ -837,41 +881,181 @@
 
 
 # ============================================================
-# CASO 12: VICINI PER GRAFO NON ORIENTATO E GRAFO ORIENTATO
+#  RICORSIONE CON NODO PARTENZA, DESTINAZIONE ED ESATTAMENTE K ARCHI
 # ============================================================
-# Se grafo non orientato:
-#     self._graph.neighbors(nodo)
+# Caso:
+# Devo trovare un cammino che:
+# - parte da source;
+# - termina in target;
+# - ha esattamente K archi;
+# - rispetta il verso degli archi;
+# - non ripete nodi;
+# - massimizza la somma dei pesi.
 #
-# Se grafo orientato e devo seguire il verso degli archi:
-#     self._graph.successors(nodo)
+# Attenzione:
+# K archi significa:
 #
-# Se grafo orientato e devo andare contro verso:
-#     self._graph.predecessors(nodo)
+#     len(parziale) - 1 == K
+#
+# perché se ho:
+#     A -> B -> C
+#
+# ho 3 nodi ma 2 archi.
 # ============================================================
 
 # ------------------------------------------------------------
-# MODEL - grafo non orientato
+# MODEL
 # ------------------------------------------------------------
 
-        for n in self._graph.neighbors(parziale[-1]):
-            ...
+def getPercorso(self, sourceStr, targetStr, k):
+    self._bestPath = []
+    self._bestScore = -float("inf")
+    self._target = None
+    self._k = k
 
+    if sourceStr is None or targetStr is None:
+        return [], 0
+
+    if k <= 0:
+        return [], 0
+
+    try:
+        sourceId = int(sourceStr)
+        targetId = int(targetStr)
+    except ValueError:
+        return [], 0
+
+    source = self._idMapProducts.get(sourceId)
+    target = self._idMapProducts.get(targetId)
+
+    if source is None or target is None:
+        return [], 0
+
+    if source not in self._graph.nodes or target not in self._graph.nodes:
+        return [], 0
+
+    self._target = target
+
+    parziale = [source]
+    self._ricorsione(parziale)
+
+    if len(self._bestPath) == 0:
+        return [], 0
+
+    return self._bestPath, self._bestScore
+
+
+def _ricorsione(self, parziale):
+    if len(parziale) > self._k:
+        return
+
+    if parziale[-1] == self._target:
+        if len(parziale) == self._k:
+            score = self._getScore(parziale)
+
+            if score > self._bestScore:
+                self._bestPath = copy.deepcopy(parziale)
+                self._bestScore = score
+
+        return
+
+    if len(parziale) == self._k:
+        return
+
+    for n in self._graph.successors(parziale[-1]):
+        if n not in parziale:
+            parziale.append(n)
+            self._ricorsione(parziale)
+            parziale.pop()
+
+
+def _getScore(self, parziale):
+    score = 0
+
+    for i in range(0, len(parziale) - 1):
+        score += self._graph[parziale[i]][parziale[i + 1]]["weight"]
+
+    return score
 
 # ------------------------------------------------------------
-# MODEL - grafo orientato seguendo il verso
+# CONTROLLER - source, target e lunghezza esatta K nodi
 # ------------------------------------------------------------
 
-        for n in self._graph.successors(parziale[-1]):
-            ...
+def handleCercaCammino(self, e):
+    source = self._view._ddProdStart.value
+    target = self._view._ddProdEnd.value
+    k = self._view._txtInLun.value
 
+    if source is None:
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text("Errore: selezionare un prodotto di partenza", color="red")
+        )
+        self._view.update_page()
+        return
 
-# ------------------------------------------------------------
-# MODEL - grafo orientato contro verso
-# ------------------------------------------------------------
+    if target is None:
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text("Errore: selezionare un prodotto di destinazione", color="red")
+        )
+        self._view.update_page()
+        return
 
-        for n in self._graph.predecessors(parziale[-1]):
-            ...
+    if k is None or k == "":
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text("Errore: inserire la lunghezza del cammino", color="red")
+        )
+        self._view.update_page()
+        return
 
+    try:
+        k = int(k)
+    except ValueError:
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text("Errore: la lunghezza deve essere un numero intero", color="red")
+        )
+        self._view.update_page()
+        return
+
+    if k <= 0:
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text("Errore: la lunghezza deve essere maggiore di zero", color="red")
+        )
+        self._view.update_page()
+        return
+
+    path, score = self._model.getPercorso(source, target, k)
+
+    if path is None or len(path) == 0:
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text("Nessun cammino trovato tra i due prodotti con la lunghezza richiesta", color="red")
+        )
+        self._view.update_page()
+        return
+
+    self._view.txt_result.controls.clear()
+    self._view.txt_result.controls.append(
+        ft.Text(f"Percorso migliore trovato con score = {score} e lunghezza = {k}", color="red")
+    )
+
+    for nodo in path:
+        self._view.txt_result.controls.append(ft.Text(str(nodo)))
+
+    self._view.update_page()
+
+# Nota se la traccia dice K archi e non K nodi, allora devi solo cambiare queste condizioni:
+    # al posto di:
+    len(parziale) == self._k
+    len(parziale) > self._k
+
+    # usare:
+    len(parziale) - 1 == self._k
+    len(parziale) - 1 > self._k
 
 # ============================================================
 # CASO 13: DFS TREE PER CAMMINO LUNGO DA UN NODO
@@ -934,6 +1118,115 @@
         for nodo in cammino:
             self._view.txt_result.controls.append(ft.Text(str(nodo)))
         self._view.update_page()
+
+# ============================================================
+#  RICORSIONE CON NODO PARTENZA, DESTINAZIONE ED ESATTAMENTE K ARCHI
+# ============================================================
+# Caso:
+# Devo trovare un cammino che:
+# - parte da source;
+# - termina in target;
+# - ha esattamente K archi;
+# - rispetta il verso degli archi;
+# - non ripete nodi;
+# - massimizza la somma dei pesi.
+#
+# Attenzione:
+# K archi significa:
+#
+#     len(parziale) - 1 == K
+#
+# perché se ho:
+#     A -> B -> C
+#
+# ho 3 nodi ma 2 archi.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# MODEL
+# ------------------------------------------------------------
+
+def getPercorso(self, source, target, k):
+    self._bestPath = []
+    self._bestScore = -float("inf")
+    self._target = None
+    self._k = k
+
+    if source is None or target is None:
+        return [], 0
+
+    if k <= 0:
+        return [], 0
+
+    try:
+        sourceId = int(source)
+        targetId = int(target)
+    except ValueError:
+        return [], 0
+
+    source = self._idMapProducts.get(sourceId)
+    target = self._idMapProducts.get(targetId)
+
+    if source is None or target is None:
+        return [], 0
+
+    if source not in self._graph.nodes or target not in self._graph.nodes:
+        return [], 0
+
+    if source == target:
+        return [], 0
+
+    self._target = target
+
+    parziale = [source]
+    self._ricorsione(parziale)
+
+    if len(self._bestPath) == 0:
+        return [], 0
+
+    return self._bestPath, self._bestScore
+
+
+def _ricorsione(self, parziale):
+    archi_usati = len(parziale) - 1
+
+    # Se ho superato il numero di archi richiesto, ramo inutile.
+    if archi_usati > self._k:
+        return
+
+    # Se sono arrivata al target, accetto il cammino solo se ho esattamente K archi.
+    # Se arrivo al target troppo presto, mi fermo comunque.
+    if parziale[-1] == self._target:
+        if archi_usati == self._k:
+            score = self._getScore(parziale)
+
+            if score > self._bestScore:
+                self._bestPath = copy.deepcopy(parziale)
+                self._bestScore = score
+
+        return
+
+    # Se ho già usato K archi ma non sono sul target, il cammino non è valido.
+    if archi_usati == self._k:
+        return
+
+    # Grafo diretto:
+    # uso successors per rispettare il verso degli archi.
+    for n in self._graph.successors(parziale[-1]):
+        if n not in parziale:
+            parziale.append(n)
+            self._ricorsioneKArchi(parziale)
+            parziale.pop()
+
+
+def _getScore(self, parziale):
+    score = 0
+
+    for i in range(0, len(parziale) - 1):
+        score += self._graph[parziale[i]][parziale[i + 1]]["weight"]
+
+    return score
 
 
 # ============================================================

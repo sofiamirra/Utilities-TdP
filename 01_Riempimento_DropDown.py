@@ -291,3 +291,23 @@ class Category:
     self._view._btnCerca.disabled = False
     self._view._btnRicorsione.disabled = False
     self._view.update_page()
+
+# ============================================================
+# UTILITY: STAMPARE SOLO LA DATA SENZA ORA
+# ============================================================
+# DatePicker.value può restituire un valore con anche l'orario:
+#
+#     2016-01-01 00:00:00
+#
+# Se voglio stampare solo la data:
+#
+#     date1.date()
+#
+
+date1SoloData = date1.date()
+date2SoloData = date2.date()
+
+self._view.txt_result.controls.append(ft.Text(f"Start date: {date1SoloData}"))
+self._view.txt_result.controls.append(ft.Text(f"End date: {date2SoloData}"))
+
+

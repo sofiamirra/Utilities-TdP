@@ -256,6 +256,70 @@
         viciniTupla.sort(key=lambda x: x[1], reverse=True)
         return viciniTupla
 
+# ============================================================
+# CASO 6: STAMPARE I 5 NODI DI GRADO MAGGIORE
+# ============================================================
+# Caso:
+# Voglio ordinare i nodi per grado decrescente.
+#
+# Per grafo NON orientato:
+#     degree(n) = numero di archi incidenti sul nodo.
+#
+# Per grafo orientato:
+#     degree(n) = in_degree(n) + out_degree(n).
+#
+# Se voglio distinguere entranti/uscenti:
+#     self._graph.in_degree(n)
+#     self._graph.out_degree(n)
+# ============================================================
+
+# ------------------------------------------------------------
+# MODEL
+# ------------------------------------------------------------
+
+def getTop5NodiGrado(self):
+    nodes = list(self._graph.nodes)
+
+    nodi_ordinati = sorted(
+        nodes,
+        key=lambda n: self._graph.degree(n),
+        reverse=True
+    )
+
+    result = []
+
+    for nodo in nodi_ordinati[:5]:
+        grado = self._graph.degree(nodo)
+        result.append((nodo, grado))
+
+    return result
+
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
+
+def handleTop5NodiGrado(self, e):
+    top_nodi = self._model.getTop5NodiGrado()
+
+    self._view.txt_result.controls.clear()
+    self._view.txt_result.controls.append(
+        ft.Text("I 5 nodi di grado maggiore sono:", color="red")
+    )
+
+    if top_nodi is None or len(top_nodi) == 0:
+        self._view.txt_result.controls.append(
+            ft.Text("Nessun nodo presente nel grafo", color="red")
+        )
+        self._view.update_page()
+        return
+
+    for nodo, grado in top_nodi:
+        self._view.txt_result.controls.append(
+            ft.Text(f"{nodo} --> degree: {grado}")
+        )
+
+    self._view.update_page()
+
 
 # ------------------------------------------------------------
 # CONTROLLER
@@ -270,6 +334,8 @@
         for v in viciniTupla:
             self._view._txt_result.controls.append(ft.Text(f"{v[0]} - peso {v[1]}"))
         self._view.update_page()
+
+
 
 # ============================================================
 # CASO BFS / DFS - VISITE DEL GRAFO E CAMMINO LUNGO DA NODO
