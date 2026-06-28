@@ -379,73 +379,109 @@ class Arco:
 # ============================================================
 # DIREZIONE ARCO IN BASE AL NUMERO DI VENDITE
 # ============================================================
-# Caso traccia:
-# Due prodotti sono connessi se entrambi sono stati venduti almeno una volta
-# nel range selezionato.
+# ============================================================
+# APPUNTO: DIREZIONE ARCO - TRACCIA A vs TRACCIA B
+# ============================================================
+# Attenzione: non basta guardare "prodotto più venduto" e "prodotto meno venduto".
+# Devo leggere bene se l'arco è:
+# - uscente dal maggiore;
+# - oppure entrante nel maggiore.
 #
-# L'arco è:
-# - uscente dal nodo con numero di vendite minore;
-# - entrante nel nodo con numero di vendite maggiore.
+# ------------------------------------------------------------
+# CASO TRACCIA A
+# ------------------------------------------------------------
+# Testo:
+# "L'arco è uscente dal nodo con numero di vendite maggiore
+# ed entrante nel nodo con numero di vendite minore."
 #
 # Quindi:
-# prodotto meno venduto  --->  prodotto più venduto
+# prodotto più venduto ---> prodotto meno venduto
 #
-# In caso di parità:
-# si inseriscono entrambi gli archi.
-#
-# ------------------------------------------------------------
-# LOGICA SQL
-# ------------------------------------------------------------
-# Supponiamo di avere due sottoquery:
-#
-# t1 = prodotto 1 con numero vendite t1.n
-# t2 = prodotto 2 con numero vendite t2.n
-#
-# Se scrivo:
-#
+# SQL:
 #     AND t1.n >= t2.n
 #
-# allora t1 è il prodotto più venduto o a pari vendite.
-# t2 è il prodotto meno venduto o a pari vendite.
+# Significa:
+#     t1 = prodotto più venduto
+#     t2 = prodotto meno venduto
 #
-# Quindi:
-# - id1 = prodotto più venduto
-# - id2 = prodotto meno venduto
-#
-# Peso:
-#
-#     t1.n + t2.n AS peso
-#
-# ------------------------------------------------------------
-# LOGICA MODEL
-# ------------------------------------------------------------
-# Se nel DAO creo:
-#
+# DAO:
 #     Arco(idMapP[row["id1"]], idMapP[row["id2"]], row["peso"])
 #
-# allora:
-#
+# Quindi:
 #     e.p1 = prodotto più venduto
 #     e.p2 = prodotto meno venduto
 #
-# Ma la traccia vuole:
+# MODEL:
+#     self._graph.add_edge(e.p1, e.p2, weight=e.peso)
 #
-#     meno venduto ---> più venduto
+# Risultato:
+#     più venduto ---> meno venduto
 #
-# Quindi nel Model devo aggiungere:
+# Questa combinazione è corretta per la Traccia A.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# CASO TRACCIA B
+# ------------------------------------------------------------
+# Testo:
+# "L'arco è entrante nel nodo con numero di vendite maggiore
+# ed uscente dal nodo con numero di vendite minore."
 #
+# Quindi:
+# prodotto meno venduto ---> prodotto più venduto
+#
+# SQL:
+#     AND t1.n >= t2.n
+#
+# Significa ancora:
+#     t1 = prodotto più venduto
+#     t2 = prodotto meno venduto
+#
+# DAO:
+#     Arco(idMapP[row["id1"]], idMapP[row["id2"]], row["peso"])
+#
+# Quindi:
+#     e.p1 = prodotto più venduto
+#     e.p2 = prodotto meno venduto
+#
+# MODEL:
 #     self._graph.add_edge(e.p2, e.p1, weight=e.peso)
 #
+# Risultato:
+#     meno venduto ---> più venduto
+#
+# Questa combinazione è corretta per la Traccia B.
+# ============================================================
+
+
 # ------------------------------------------------------------
-# CASO PARITÀ
+# REGOLA FINALE
 # ------------------------------------------------------------
-# Se t1.n == t2.n, la condizione:
+# Se nel SQL uso:
 #
-#     t1.n >= t2.n
+#     AND t1.n >= t2.n
 #
-# è vera sia per la coppia A/B sia per la coppia B/A.
-# Quindi SQL produce entrambi gli archi.
+# allora sto ordinando la coppia così:
 #
+#     t1 = maggiore
+#     t2 = minore
+#
+# Poi nel Model decido la direzione vera:
+#
+#     add_edge(e.p1, e.p2)  --> maggiore verso minore
+#     add_edge(e.p2, e.p1)  --> minore verso maggiore
+#
+# Il peso:
+#
+#     t1.n + t2.n
+#
+# è simmetrico, quindi il valore del peso non cambia se inverto l'arco.
+# Quello che cambia è la DIREZIONE dell'arco, quindi cambiano:
+# - archi entranti;
+# - archi uscenti;
+# - influenza / score dei nodi.
+# ============================================================
 # ------------------------------------------------------------
 # NOTA IMPORTANTE: ORDINE NODI IN add_edge
 # ------------------------------------------------------------
