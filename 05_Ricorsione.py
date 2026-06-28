@@ -879,6 +879,39 @@ for n in self._graph.predecessors(parziale[-1]):
 
         return dettagli
 
+# ------------------------------------------------------------
+# CONTROLLER - stampa path con dettagli
+# ------------------------------------------------------------
+
+path, score = self._model.getPercorso(...)
+
+if path is None or len(path) == 0:
+    self._view.txt_result.controls.clear()
+    self._view.txt_result.controls.append(
+        ft.Text("Nessun percorso trovato", color="red")
+    )
+    self._view.update_page()
+    return
+
+dettagli = self._model.getPathDetails(path)
+
+self._view.txt_result.controls.clear()
+self._view.txt_result.controls.append(
+    ft.Text(f"Percorso trovato con score = {score}", color="red")
+)
+
+self._view.txt_result.controls.append(ft.Text("Nodi attraversati:"))
+for nodo in path:
+    self._view.txt_result.controls.append(ft.Text(str(nodo)))
+
+self._view.txt_result.controls.append(ft.Text("Archi attraversati:"))
+for n1, n2, peso in dettagli:
+    self._view.txt_result.controls.append(
+        ft.Text(f"{n1} --> {n2} | peso: {peso}")
+    )
+
+self._view.update_page()
+
 
 # ============================================================
 #  RICORSIONE CON NODO PARTENZA, DESTINAZIONE ED ESATTAMENTE K ARCHI
