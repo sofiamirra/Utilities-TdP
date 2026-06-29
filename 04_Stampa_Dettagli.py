@@ -256,6 +256,21 @@
         viciniTupla.sort(key=lambda x: x[1], reverse=True)
         return viciniTupla
 
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
+
+    def handleViciniOrdinati(self, e):
+        viciniTupla = self._model.getViciniOrdinati(self._choiceTeam)
+        self._view._txt_result.controls.clear()
+        self._view._txt_result.controls.append(
+            ft.Text(f"Il nodo {self._choiceTeam} ha {len(viciniTupla)} vicini",
+                    color="green"))
+        for v in viciniTupla:
+            self._view._txt_result.controls.append(ft.Text(f"{v[0]} - peso {v[1]}"))
+        self._view.update_page()
+
+
 # ============================================================
 # CASO 6: STAMPARE I 5 NODI DI GRADO MAGGIORE
 # ============================================================
@@ -327,22 +342,6 @@ def handleTop5NodiGrado(self, e):
         )
 
     self._view.update_page()
-
-
-# ------------------------------------------------------------
-# CONTROLLER
-# ------------------------------------------------------------
-
-    def handleViciniOrdinati(self, e):
-        viciniTupla = self._model.getViciniOrdinati(self._choiceTeam)
-        self._view._txt_result.controls.clear()
-        self._view._txt_result.controls.append(
-            ft.Text(f"Il nodo {self._choiceTeam} ha {len(viciniTupla)} vicini",
-                    color="green"))
-        for v in viciniTupla:
-            self._view._txt_result.controls.append(ft.Text(f"{v[0]} - peso {v[1]}"))
-        self._view.update_page()
-
 
 
 # ============================================================
