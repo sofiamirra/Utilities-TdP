@@ -1208,6 +1208,185 @@ for n in self._graph.neighbors(parziale[-1]):
         parziale.append(n)
 
 # ============================================================
+# CASO: CAMMINO MIGLIORE CON CARATTERISTICA STRETTAMENTE CRESCENTE
+# ============================================================
+# Esempio:
+# Da un nodo posso spostarmi solo verso un nodo con densità di popolazione
+# strettamente crescente.
+#
+# Caratteristica:
+#     densità = Population / Area
+#
+# Score da massimizzare:
+#     somma pesi archi / distanza totale percorsa
+#
+# Distanza tra due nodi:
+#     n1.distance_HV(n2)
+#
+# Logica procedurale:
+# 1. Non ho un nodo source scelto dall'utente.
+# 2. Non ho un nodo target.
+# 3. Non ho una lunghezza K.
+# 4. Quindi provo tutti i nodi come possibile partenza.
+# 5. Il grafo è non orientato, quindi uso neighbors().
+# 6. Il vincolo direzionale viene imposto manualmente:
+#       caratteristica_nuova > caratteristica_corrente
+# 7. Ogni cammino valido con almeno un arco può essere una soluzione.
+# 8. Aggiorno il best se lo score migliora.
+# ============================================================
+
+# ------------------------------------------------------------
+# MODEL
+# ------------------------------------------------------------
+
+def getPercorso(self):
+    self._bestPath = []
+    self._bestScore = -float("inf")
+
+    if len(self._graph.nodes) == 0:
+        return [], 0
+
+    for n in self._graph.nodes:
+        parziale = [n]
+        self._ricorsione(parziale)
+
+    if len(self._bestPath) == 0:
+        return [], 0
+
+    return self._bestPath, self._bestScore
+
+
+def _ricorsione(self, parziale):
+    if len(parziale) > 1:
+        score = self._getScore(parziale)
+
+        if score > self._bestScore:
+            self._bestPath = copy.deepcopy(parziale)
+            self._bestScore = score
+
+    for n in self._graph.neighbors(parziale[-1]):
+        if n not in parziale:
+            valore_corrente = self.getDensita(parziale[-1])
+            valore_nuovo = self.getDensita(n)
+
+            if valore_nuovo > valore_corrente:
+                parziale.append(n)
+                self._ricorsione(parziale)
+                parziale.pop()
+
+
+def _getScore(self, parziale):
+    peso_totale = 0
+    distanza_totale = 0
+
+    for i in range(0, len(parziale) - 1):
+        n1 = parziale[i]
+        n2 = parziale[i + 1]
+
+        peso_totale += self._graph[n1][n2]["weight"]
+        distanza_totale += n1.distance_HV(n2)
+
+    if distanza_totale == 0:
+        return 0
+
+    return peso_totale / distanza_totale
+
+
+def getDensita(self, stato):
+    if stato.Area == 0:
+        return 0
+
+    return stato.Population / stato.Area
+
+
+def getPathDetails(self, path):
+    dettagli = []
+
+    if path is None or len(path) < 2:
+        return dettagli
+
+    for i in range(0, len(path) - 1):
+        n1 = path[i]
+        n2 = path[i + 1]
+
+        peso = self._graph[n1][n2]["weight"]
+        distanza = n1.distance_HV(n2)
+
+        dettagli.append((n1, n2, peso, distanza))
+
+    return dettagli
+
+# ------------------------------------------------------------
+# CONTROLLER
+# ------------------------------------------------------------
+
+def handle_path(self, e):
+    path, score = self._model.getPercorso()
+
+    self._view.txt_result2.controls.clear()
+
+    if path is None or len(path) == 0:
+        self._view.txt_result2.controls.append(
+            ft.Text("Nessun percorso trovato", color="red")
+        )
+        self._view.update_page()
+        return
+
+    self._view.txt_result2.controls.append(
+        ft.Text(f"Punteggio totale del percorso: {score:.4f}", color="red")
+    )
+
+    self._view.txt_result2.controls.append(
+        ft.Text("Stati attraversati:")
+    )
+
+    for stato in path:
+        densita = self._model.getDensita(stato)
+        self._view.txt_result2.controls.append(
+            ft.Text(f"{stato} - densità: {densita:.4f}")
+        )
+
+    dettagli = self._model.getPathDetails(path)
+
+    self._view.txt_result2.controls.append(
+        ft.Text("Archi attraversati:")
+    )
+
+    for n1, n2, peso, distanza in dettagli:
+        self._view.txt_result2.controls.append(
+            ft.Text(f"{n1} --> {n2} | peso: {peso:.2f} | distanza: {distanza:.2f}")
+        )
+
+    self._view.update_page()
+# ============================================================
+# VARIANTE GENERALE: CAMBIO SOLO LA CARATTERISTICA
+# ============================================================
+# Se in un altro esercizio il vincolo non è sulla densità ma su un'altra
+# caratteristica, lascio uguale la struttura e cambio solo la funzione
+# che calcola il valore del nodo.
+#
+# Esempi:
+# - anno crescente
+# - popolazione crescente
+# - vendite crescenti
+# - prezzo crescente
+# - durata crescente
+# - data crescente
+#
+# Dentro la ricorsione resta:
+#
+#     valore_corrente = self.getValore(parziale[-1])
+#     valore_nuovo = self.getValore(n)
+#
+#     if valore_nuovo > valore_corrente:
+#         ...
+# ============================================================
+
+def getValore(self, nodo):
+    return nodo.attributo_da_confrontare
+
+
+# ============================================================
 # SCHEMA DECISIONALE RAPIDO
 # ============================================================
 # "partendo dal nodo selezionato"
