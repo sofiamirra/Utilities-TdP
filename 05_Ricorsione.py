@@ -532,7 +532,7 @@ for n in self._graph.predecessors(parziale[-1]):
 # ============================================================
 # Quando usarlo:
 # - la traccia dice "cammino lungo esattamente K nodi".
-# - se parla di K archi, controllare len(parziale)-1 == K.
+# - se parla di K archi (passi), controllare len(parziale)-1 == K.
 #
 # Controlli:
 # - K arriva spesso da TextField, quindi serve try/except nel Controller.
@@ -1091,68 +1091,6 @@ def handleCercaCammino(self, e):
     len(parziale) - 1 > self._k
 
 # ============================================================
-# CASO 13: DFS TREE PER CAMMINO LUNGO DA UN NODO
-# ============================================================
-# Quando usarlo:
-# - la traccia dice di scegliere un algoritmo di visita tra BFS e DFS.
-# - questo NON sostituisce la ricorsione/backtracking ottimizzante.
-# ============================================================
-
-# ------------------------------------------------------------
-# MODEL
-# ------------------------------------------------------------
-
-    def getCamminoDFS(self, source):
-        if source is None:
-            return []
-        if source not in self._graph.nodes:
-            return []
-
-        lp = []
-        tree = nx.dfs_tree(self._graph, source)
-        nodi = list(tree.nodes())
-
-        for node in nodi:
-            tmp = [node]
-
-            while tmp[0] != source:
-                pred = nx.predecessor(tree, source, tmp[0])
-                tmp.insert(0, pred[0])
-
-            if len(tmp) > len(lp):
-                lp = copy.deepcopy(tmp)
-
-        return lp
-
-
-# ------------------------------------------------------------
-# CONTROLLER
-# ------------------------------------------------------------
-
-    def handleCercaCamminoDFS(self, e):
-        source = self._choiceNode
-
-        if source is None:
-            self._view.txt_result.controls.clear()
-            self._view.txt_result.controls.append(ft.Text("Errore: selezionare un nodo di partenza", color="red"))
-            self._view.update_page()
-            return
-
-        cammino = self._model.getCamminoDFS(source)
-
-        if cammino is None or len(cammino) == 0:
-            self._view.txt_result.controls.clear()
-            self._view.txt_result.controls.append(ft.Text("Nessun cammino trovato tramite DFS", color="red"))
-            self._view.update_page()
-            return
-
-        self._view.txt_result.controls.clear()
-        self._view.txt_result.controls.append(ft.Text(f"Cammino DFS trovato con {len(cammino)} nodi", color="red"))
-        for nodo in cammino:
-            self._view.txt_result.controls.append(ft.Text(str(nodo)))
-        self._view.update_page()
-
-# ============================================================
 #  RICORSIONE CON NODO PARTENZA, DESTINAZIONE ED ESATTAMENTE K ARCHI
 # ============================================================
 # Caso:
@@ -1261,6 +1199,13 @@ def _getScore(self, parziale):
 
     return score
 
+# ============================================================
+# CONDIZIONE: OGNI NOSO PUÒ ESSERE ATTRAVERSATO UNA SOLA VOLTA
+# ============================================================
+
+for n in self._graph.neighbors(parziale[-1]):
+    if n not in parziale:
+        parziale.append(n)
 
 # ============================================================
 # SCHEMA DECISIONALE RAPIDO
