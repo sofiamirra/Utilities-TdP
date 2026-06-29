@@ -351,6 +351,122 @@ for n in self._graph.predecessors(parziale[-1]):
         self._view.update_page()
 
 
+    # ============================================================
+    # MODEL - cammino più lungo da source con pesi decrescenti
+    # ============================================================
+
+    def getCammino(self, sourceStr):
+        self._bestPath = []
+        self._bestScore = 0
+
+        if sourceStr is None:
+            return [], 0
+
+        try:
+            sourceId = int(sourceStr)
+        except ValueError:
+            return [], 0
+
+        source = self._idMapCustomers.get(sourceId)
+
+        if source is None:
+            return [], 0
+
+        if source not in self._graph.nodes:
+            return [], 0
+
+        parziale = [source]
+        self._ricorsione(parziale)
+
+        return self._bestPath, self._bestScore
+
+
+    def _ricorsione(self, parziale):
+        if len(parziale) > self._bestScore:
+            self._bestPath = copy.deepcopy(parziale)
+            self._bestScore = len(parziale)
+
+        for n in self._graph.successors(parziale[-1]):
+            if n not in parziale:
+                peso_corrente = self._graph[parziale[-1]][n]["weight"]
+
+                if len(parziale) == 1:
+                    peso_precedente = float("inf")
+                else:
+                    peso_precedente = self._graph[parziale[-2]][parziale[-1]]["weight"]
+
+                if peso_corrente < peso_precedente:
+                    parziale.append(n)
+                    self._ricorsione(parziale)
+                    parziale.pop()
+
+
+    def getPathDetails(self, path):
+        dettagli = []
+
+        if path is None or len(path) < 2:
+            return dettagli
+
+        for i in range(0, len(path) - 1):
+            n1 = path[i]
+            n2 = path[i + 1]
+            peso = self._graph[n1][n2]["weight"]
+            dettagli.append((n1, n2, peso))
+
+        return dettagli
+
+
+    # ============================================================
+    # CONTROLLER - cerca cammino
+    # ============================================================
+
+    def handleCercaCammino(self, e):
+        source = self._view._ddCustomer.value
+
+        if source is None:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Errore: selezionare un cliente di partenza", color="red")
+            )
+            self._view.update_page()
+            return
+
+        path, score = self._model.getCammino(source)
+
+        if path is None or len(path) == 0:
+            self._view.txt_result.controls.clear()
+            self._view.txt_result.controls.append(
+                ft.Text("Nessun cammino trovato", color="red")
+            )
+            self._view.update_page()
+            return
+
+        dettagli = self._model.getPathDetails(path)
+
+        self._view.txt_result.controls.clear()
+        self._view.txt_result.controls.append(
+            ft.Text(f"Cammino trovato di lunghezza {score}", color="red")
+        )
+
+        self._view.txt_result.controls.append(
+            ft.Text("Clienti attraversati:")
+        )
+
+        for nodo in path:
+            self._view.txt_result.controls.append(ft.Text(str(nodo)))
+
+        self._view.txt_result.controls.append(
+            ft.Text("Archi attraversati:")
+        )
+
+        for n1, n2, peso in dettagli:
+            self._view.txt_result.controls.append(
+                ft.Text(f"{n1} --> {n2} | peso: {peso}")
+            )
+
+        self._view.update_page()
+
+
 # ============================================================
 # CASO 5: CAMMINO DI PESO MASSIMO CON PESI STRETTAMENTE DECRESCENTI
 # ============================================================

@@ -547,3 +547,59 @@ for e in allEdges:
 # - attenzione a maiuscole e minuscole.
 #
 
+# ============================================================
+# DAO - ARCHI: clienti collegati se hanno acquistato dallo stesso artista
+# ============================================================
+# Logica:
+# - duplico il percorso degli acquisti:
+#     cliente 1 -> invoice -> invoiceline -> track -> album -> artist
+#     cliente 2 -> invoice -> invoiceline -> track -> album -> artist
+#
+# - collego le due parti con:
+#     al1.ArtistId = al2.ArtistId
+#
+# - evito coppie duplicate con:
+#     i1.CustomerId > i2.CustomerId
+#
+# - peso = numero di artisti comuni acquistati.
+#
+# Se la traccia dà un'altra definizione di peso, cambio solo COUNT(DISTINCT al1.ArtistId).
+# ============================================================
+
+@staticmethod
+def getAllEdges(idMapC):
+    conn = DBConnect.get_connection()
+    results = []
+
+    cursor = conn.cursor(dictionary=True)
+    query = """SELECT i1.CustomerId AS id1,
+                      i2.CustomerId AS id2,
+                      COUNT(DISTINCT al1.ArtistId) AS peso
+               FROM invoice i1, invoiceline il1, track t1, album al1,
+                    invoice i2, invoiceline il2, track t2, album al2
+               WHERE i1.InvoiceId = il1.InvoiceId
+               AND il1.TrackId = t1.TrackId
+               AND t1.AlbumId = al1.AlbumId
+
+               AND i2.InvoiceId = il2.InvoiceId
+               AND il2.TrackId = t2.TrackId
+               AND t2.AlbumId = al2.AlbumId
+
+               AND al1.ArtistId = al2.ArtistId
+               AND i1.CustomerId > i2.CustomerId
+
+               GROUP BY i1.CustomerId, i2.CustomerId"""
+
+    cursor.execute(query)
+
+    for row in cursor:
+        results.append(Arco(
+            idMapC[row["id1"]],
+            idMapC[row["id2"]],
+            row["peso"]
+        ))
+
+    cursor.close()
+    conn.close()
+    return results
+

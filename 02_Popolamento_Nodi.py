@@ -333,3 +333,27 @@ class Constructor:
             # assegna quella data al campo dell'oggetto squadra
             squadra.oldest_driver_dob = DAO.getDoB(squadra, year1, year2)
 
+# ============================================================
+# DAO - NODI: clienti che hanno almeno una fattura
+# ============================================================
+
+@staticmethod
+def getAllNodes():
+    conn = DBConnect.get_connection()
+    results = []
+
+    cursor = conn.cursor(dictionary=True)
+    query = """SELECT DISTINCT c.*
+               FROM customer c, invoice i
+               WHERE c.CustomerId = i.CustomerId
+               ORDER BY c.LastName, c.FirstName"""
+
+    cursor.execute(query)
+
+    for row in cursor:
+        results.append(Customer(**row))
+
+    cursor.close()
+    conn.close()
+    return results
+
